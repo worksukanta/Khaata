@@ -1,7 +1,7 @@
 # Khaata Project Status
 
-**Last updated:** 2026-10-29  
-**Current phase:** Step 4 complete as a documentation baseline; BOOT-001 (monorepo skeleton) complete in the working tree on branch `feat/BOOT-001-monorepo-skeleton`, awaiting the user's manual review and commit; application implementation not started.
+**Last updated:** 2026-10-29
+**Current phase:** BE-001 (Django project and settings) implementation complete on `feat/BE-001-django-settings`, awaiting user review and merge. BOOT-001 was previously merged. Application implementation has started with the backend foundation.
 
 ## Approved baselines
 
@@ -23,10 +23,8 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation. After BOOT-001 is committed by the user, the next backlog item is `BE-001` (Django project and settings). `BOOT-002` (CI baseline) follows once backend/frontend projects exist.
-
-Start with backend project configuration, custom user model, PostgreSQL settings, health check, and CI; then add auth and monthly book creation with tests. Do not build all screens and endpoints in one task.
+Step 5 — vertical-slice implementation continues. BE-001 is complete (pending user merge). Next: `BE-002` (custom user authentication: registration, login, logout, current user, CSRF bootstrap). `BOOT-002` (CI baseline) can follow once BE-001 is merged.
 
 ## Last known verification
 
-BOOT-001: repository inspected (`git status` clean on `main`, one baseline commit, `origin` remote present); `frontend/` and `backend/` placeholders added; `git check-ignore` confirmed `.env` is ignored and `.env.example` is not. No application code, migrations, test suite, deployment, or live API has been run.
+BE-001: Django 5.1 + DRF 3.17 installed; Django system check clean (0 issues); 21 tests pass with in-memory SQLite; `makemigrations --check --dry-run` reports no changes; health endpoint verified via test client; no secrets committed; `backend/.gitkeep` removed and replaced with real files.

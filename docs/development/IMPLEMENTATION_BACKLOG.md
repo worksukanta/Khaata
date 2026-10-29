@@ -20,12 +20,16 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 ## Milestone M1 — Backend foundation
 
 ### BE-001 — Django project and settings
-- Status: TODO
-- Create Django project, split development/test/production settings if useful.
-- Configure environment-driven secrets, PostgreSQL, timezone, allowed hosts, CSRF/CORS.
-- Declare custom user model before first migration.
-- Add health endpoint.
-- Acceptance: fresh setup instructions work; secrets absent from repo; health endpoint responds.
+- Status: IN_PROGRESS (implementation complete and review-corrected on `feat/BE-001-django-settings`; awaiting user review and merge)
+- Created Django project under `backend/khaata/`; settings split into `base.py`, `development.py`, `test.py`.
+- Environment-driven config via `python-decouple`; PostgreSQL with individual `DB_*` vars; documented SQLite fallback; partial config raises `RuntimeError`.
+- Custom `User` model (UUID PK, email login, `display_name`, `timezone=Asia/Kolkata`) declared in `accounts` app and configured via `AUTH_USER_MODEL` before the first migration; email fully lowercased on creation for case-insensitive uniqueness per `DATABASE_DESIGN.md`.
+- Initial migration generated after model was in place; `makemigrations --check --dry-run` passes.
+- Health endpoint `GET /api/v1/health/` returns `{"status": "ok"}`; no auth required; no secrets exposed.
+- Review corrections applied: Django 5.1.15 → 5.2.18 (LTS); DRF 3.17.2 → 3.18.3 (latest stable); unused imports removed; 2 email normalization tests added.
+- 23 tests pass with zero warnings under `-W error::DeprecationWarning`; Django system check clean.
+- `.env.example` updated with individual `DB_*` vars and explanatory comments. `backend/.gitkeep` replaced by real files.
+- Acceptance: fresh setup instructions work; secrets absent from repo; health endpoint responds; tests pass.
 
 ### BE-002 — Custom user and authentication
 - Status: TODO

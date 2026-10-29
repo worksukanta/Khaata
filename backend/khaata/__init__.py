@@ -1,0 +1,1 @@
+# Khaata Django configuration package
