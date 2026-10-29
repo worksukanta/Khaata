@@ -5,7 +5,8 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 ## Milestone M0 — Repository foundation
 
 ### BOOT-001 — Initialize repository and monorepo skeleton
-- Status: TODO
+- Status: IN_PROGRESS (work complete in the working tree on branch `feat/BOOT-001-monorepo-skeleton`; awaiting the user's manual review and commit. Mark DONE once committed and the "clean Git status" acceptance check passes.)
+- Notes: Git repository already existed (baseline commit `d4a2724`, remote `origin`); no second repo initialized. Added `frontend/.gitkeep` and `backend/.gitkeep`. Verified `.gitignore`, `.env.example`, README, `AGENTS.md`/`CLAUDE.md`/`CODEX.md`, PR template and issue templates. `.gitignore` left unchanged (already covers env files, venvs, node_modules, caches, logs, secrets).
 - Create `frontend/`, `backend/`, `.github/`, and preserve docs.
 - Add `.gitignore`, `.env.example`, README, agent instructions, PR template, issue templates.
 - Set default branch and initial commit only after review.

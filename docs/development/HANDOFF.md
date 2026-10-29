@@ -1,10 +1,10 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-004-API-BASELINE`
+`KH-CP-005-BOOT-001`
 
 ## State
-Steps 1–3 are approved. Step 4 documents are prepared. No application code has been implemented.
+Steps 1–3 are approved. Step 4 documents are prepared. BOOT-001 work is complete in the working tree on branch `feat/BOOT-001-monorepo-skeleton` (based on `main` @ `d4a2724`). Changes are uncommitted and awaiting the user's manual review and commit (agents must not perform Git write operations); the backlog item stays `IN_PROGRESS` until then. Changed: `CHANGELOG.md`, `README.md`, and `docs/development/{HANDOFF,IMPLEMENTATION_BACKLOG,PROJECT_STATUS}.md`. New: `backend/.gitkeep`, `frontend/.gitkeep` (the only contents of those directories). No application code has been implemented.
 
 ## Read first
 1. `AGENTS.md`
@@ -18,9 +18,9 @@ Steps 1–3 are approved. Step 4 documents are prepared. No application code has
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-`BOOT-001`: initialize Git repository and monorepo scaffolding, preserving this documentation. Do not generate application features in this task.
+After the user commits BOOT-001 and marks it `DONE` in the backlog: `BE-001` — Django project, settings split, custom user model declared before first migration, PostgreSQL environment configuration, and health endpoint. The user decides the branch for BE-001. Remove `backend/.gitkeep` once real files exist.
 
-After bootstrap, proceed to `BE-001`: Django project, settings split, custom user model declared before first migration, PostgreSQL environment configuration, and health endpoint.
+`BOOT-002` (CI baseline) can follow once backend/frontend projects exist.
 
 ## Required agent behavior
 - Inspect `git status`, current branch, latest commit, and file tree before edits.
