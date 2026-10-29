@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-29  
-**Current phase:** Step 4 complete as a documentation baseline; implementation not started.
+**Current phase:** Step 4 complete as a documentation baseline; BOOT-001 (monorepo skeleton) complete in the working tree on branch `feat/BOOT-001-monorepo-skeleton`, awaiting the user's manual review and commit; application implementation not started.
 
 ## Approved baselines
 
@@ -23,10 +23,10 @@
 
 ## Next milestone
 
-Step 5 — repository bootstrap and vertical-slice implementation.
+Step 5 — vertical-slice implementation. After BOOT-001 is committed by the user, the next backlog item is `BE-001` (Django project and settings). `BOOT-002` (CI baseline) follows once backend/frontend projects exist.
 
 Start with backend project configuration, custom user model, PostgreSQL settings, health check, and CI; then add auth and monthly book creation with tests. Do not build all screens and endpoints in one task.
 
 ## Last known verification
 
-Documentation/package generation only. No application code, migrations, test suite, deployment, or live API has been run.
+BOOT-001: repository inspected (`git status` clean on `main`, one baseline commit, `origin` remote present); `frontend/` and `backend/` placeholders added; `git check-ignore` confirmed `.env` is ignored and `.env.example` is not. No application code, migrations, test suite, deployment, or live API has been run.

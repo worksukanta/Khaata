@@ -10,7 +10,8 @@ Khaata is a mobile-first personal finance and event expense tracker. V1 focuses 
 - Step 2 — architecture/database baseline: finalized.
 - Step 3 — Clean Fintech UI/UX specification: approved.
 - Step 4 — API contract and repository governance: prepared.
-- Implementation: **not started**.
+- BOOT-001 — monorepo skeleton: in review (`frontend/` and `backend/` are empty placeholders).
+- Application implementation: **not started**.
 
 ## Technology baseline
 
@@ -51,9 +52,10 @@ Khaata is a mobile-first personal finance and event expense tracker. V1 focuses 
 │   ├── architecture/
 │   ├── decisions/
 │   ├── development/
+│   ├── specifications/
 │   └── ui-ux/
-├── frontend/       # created during implementation
-└── backend/        # created during implementation
+├── frontend/       # empty placeholder; React + TypeScript + Vite added in FE-001
+└── backend/        # empty placeholder; Django + DRF added in BE-001
 ```
 
 ## Important financial invariants
