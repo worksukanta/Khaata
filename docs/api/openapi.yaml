@@ -1,0 +1,543 @@
+openapi: 3.1.0
+info:
+  title: Khaata API
+  version: 1.0.0
+  description: >
+    V1 API contract baseline for Khaata. This specification is a starting
+    contract; implementation must keep API_CONTRACT.md and this file aligned.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+paths:
+  /auth/csrf/:
+    get:
+      summary: Bootstrap CSRF cookie
+      security: []
+      responses:
+        "200":
+          description: CSRF cookie initialized
+  /auth/register/:
+    post:
+      summary: Register an account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /auth/login/:
+    post:
+      summary: Create authenticated session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: Session established }
+        "401": { description: Invalid credentials }
+  /auth/logout/:
+    post:
+      summary: End current session
+      responses:
+        "204": { description: Logged out }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/me/:
+    get:
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+    patch:
+      summary: Update profile preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name: { type: string, maxLength: 120 }
+                timezone: { type: string, maxLength: 64 }
+      responses:
+        "200": { description: Profile updated }
+  /books/:
+    get:
+      summary: List and search books
+      parameters:
+        - in: query
+          name: type
+          schema: { type: string, enum: [MONTHLY, EVENT, GENERAL] }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: is_archived
+          schema: { type: boolean }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Paginated books
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedBooks" }
+    post:
+      summary: Create an event or general book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateBookRequest" }
+      responses:
+        "201":
+          description: Book created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /books/monthly/{year}/{month}/ensure/:
+    post:
+      summary: Idempotently ensure monthly book
+      parameters:
+        - in: path
+          name: year
+          required: true
+          schema: { type: integer, minimum: 2000, maximum: 2200 }
+        - in: path
+          name: month
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 12 }
+      responses:
+        "200": { description: Existing monthly book returned }
+        "201": { description: Monthly book created }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /books/{id}/:
+    parameters:
+      - $ref: "#/components/parameters/UUID"
+    get:
+      summary: Retrieve an owned book
+      responses:
+        "200":
+          description: Book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Update editable book metadata
+      responses:
+        "200": { description: Book updated }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /books/{id}/archive/:
+    post:
+      summary: Archive an event/general book
+      parameters:
+        - $ref: "#/components/parameters/UUID"
+      responses:
+        "200": { description: Book archived }
+  /books/{id}/restore/:
+    post:
+      summary: Restore an archived event/general book
+      parameters:
+        - $ref: "#/components/parameters/UUID"
+      responses:
+        "200": { description: Book restored }
+  /categories/:
+    get:
+      summary: List categories
+      parameters:
+        - in: query
+          name: type
+          schema: { type: string, enum: [INCOME, EXPENSE] }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        "200": { description: Paginated categories }
+    post:
+      summary: Create a category
+      responses:
+        "201": { description: Category created }
+  /payment-methods/:
+    get:
+      summary: List payment method labels
+      responses:
+        "200": { description: Paginated payment methods }
+    post:
+      summary: Create a payment method label
+      responses:
+        "201": { description: Payment method created }
+  /transactions/:
+    get:
+      summary: List and filter active transactions
+      parameters:
+        - in: query
+          name: book_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: type
+          schema: { type: string, enum: [INCOME, EXPENSE] }
+        - in: query
+          name: category_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: payment_method_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: ordering
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Paginated transactions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedTransactions" }
+    post:
+      summary: Create transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransactionWrite" }
+      responses:
+        "201":
+          description: Transaction created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transaction" }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /transactions/{id}/:
+    parameters:
+      - $ref: "#/components/parameters/UUID"
+    get:
+      summary: Retrieve transaction
+      responses:
+        "200": { description: Transaction }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Edit transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransactionWrite" }
+      responses:
+        "200": { description: Transaction updated }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Soft-delete transaction
+      responses:
+        "204": { description: Soft-deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /budgets/:
+    get:
+      summary: List budgets
+      parameters:
+        - in: query
+          name: scope
+          schema: { type: string, enum: [MONTHLY_OVERALL, EVENT] }
+        - in: query
+          name: year
+          schema: { type: integer }
+        - in: query
+          name: month
+          schema: { type: integer, minimum: 1, maximum: 12 }
+        - in: query
+          name: book_id
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Paginated budgets }
+    post:
+      summary: Create budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BudgetWrite" }
+      responses:
+        "201": { description: Budget created }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /budgets/{id}/:
+    parameters:
+      - $ref: "#/components/parameters/UUID"
+    get:
+      summary: Retrieve budget with calculated utilization
+      responses:
+        "200": { description: Budget details and calculated totals }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Update budget limit
+      responses:
+        "200": { description: Budget updated }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /budgets/{id}/allocations/:
+    put:
+      summary: Atomically replace category allocations
+      parameters:
+        - $ref: "#/components/parameters/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [allocations]
+              properties:
+                allocations:
+                  type: array
+                  items:
+                    type: object
+                    required: [category_id, amount]
+                    properties:
+                      category_id: { type: string, format: uuid }
+                      amount: { $ref: "#/components/schemas/Money" }
+      responses:
+        "200": { description: Allocations replaced }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /reports/monthly/:
+    get:
+      summary: Combined monthly dashboard
+      parameters:
+        - in: query
+          name: year
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: month
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 12 }
+      responses:
+        "200":
+          description: Combined monthly totals and book-type breakdown
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MonthlyReport" }
+  /reports/books/{id}/:
+    get:
+      summary: Book-scoped report
+      parameters:
+        - $ref: "#/components/parameters/UUID"
+      responses:
+        "200": { description: Book report }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /reports/budget-utilization/:
+    get:
+      summary: Monthly budget utilization
+      parameters:
+        - in: query
+          name: year
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: month
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 12 }
+      responses:
+        "200": { description: Budget utilization }
+  /exports/transactions.csv:
+    get:
+      summary: Export filtered active transactions as CSV
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sessionid
+  parameters:
+    UUID:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Unauthorized:
+      description: Authentication required
+    NotFound:
+      description: Resource not found or inaccessible
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    Money:
+      type: string
+      pattern: '^\d{1,12}\.\d{2}$'
+      examples: ["250.00"]
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, format: password, minLength: 10 }
+        display_name: { type: string, maxLength: 120 }
+    User:
+      type: object
+      required: [id, email, timezone]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string, nullable: true }
+        timezone: { type: string, example: Asia/Kolkata }
+    Book:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [MONTHLY, EVENT, GENERAL] }
+        name: { type: string, maxLength: 150 }
+        description: { type: string, nullable: true }
+        year: { type: integer, nullable: true }
+        month: { type: integer, nullable: true, minimum: 1, maximum: 12 }
+        start_date: { type: string, format: date, nullable: true }
+        end_date: { type: string, format: date, nullable: true }
+        opening_balance: { $ref: "#/components/schemas/Money" }
+        is_archived: { type: boolean }
+    CreateBookRequest:
+      type: object
+      required: [type, name]
+      properties:
+        type: { type: string, enum: [EVENT, GENERAL] }
+        name: { type: string, minLength: 1, maxLength: 150 }
+        description: { type: string, maxLength: 5000 }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+    TransactionWrite:
+      type: object
+      required: [book_id, type, amount, transaction_date]
+      properties:
+        book_id: { type: string, format: uuid }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        amount: { $ref: "#/components/schemas/Money" }
+        transaction_date: { type: string, format: date }
+        category_id: { type: string, format: uuid, nullable: true }
+        payment_method_id: { type: string, format: uuid, nullable: true }
+        description: { type: string, maxLength: 500 }
+    Transaction:
+      allOf:
+        - $ref: "#/components/schemas/TransactionWrite"
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+    BudgetWrite:
+      type: object
+      required: [scope, total_limit]
+      properties:
+        scope: { type: string, enum: [MONTHLY_OVERALL, EVENT] }
+        year: { type: integer }
+        month: { type: integer, minimum: 1, maximum: 12 }
+        book_id: { type: string, format: uuid }
+        total_limit: { $ref: "#/components/schemas/Money" }
+    MonthlyReport:
+      type: object
+      required: [period, currency, income_total, expense_total, net_cash_flow, book_type_breakdown]
+      properties:
+        period:
+          type: object
+          required: [year, month]
+          properties:
+            year: { type: integer }
+            month: { type: integer, minimum: 1, maximum: 12 }
+        currency: { type: string, enum: [INR] }
+        income_total: { $ref: "#/components/schemas/Money" }
+        expense_total: { $ref: "#/components/schemas/Money" }
+        net_cash_flow: { $ref: "#/components/schemas/Money" }
+        book_type_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              book_type: { type: string, enum: [MONTHLY, EVENT, GENERAL] }
+              income: { $ref: "#/components/schemas/Money" }
+              expenses: { $ref: "#/components/schemas/Money" }
+        category_breakdown:
+          type: array
+          items: { type: object }
+        budget:
+          type: object
+          properties:
+            total_limit: { $ref: "#/components/schemas/Money" }
+            spent: { $ref: "#/components/schemas/Money" }
+            remaining: { $ref: "#/components/schemas/Money" }
+            utilization_percent: { $ref: "#/components/schemas/Money" }
+            status:
+              type: string
+              enum: [NOT_SET, ON_TRACK, NEAR_LIMIT, OVER_BUDGET, UNBUDGETED_SPENDING]
+        recent_transactions:
+          type: array
+          items: { $ref: "#/components/schemas/Transaction" }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    PaginatedBooks:
+      type: object
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/Book" }
+    PaginatedTransactions:
+      type: object
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/Transaction" }

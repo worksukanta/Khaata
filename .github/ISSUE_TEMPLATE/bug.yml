@@ -1,0 +1,28 @@
+name: Bug report
+description: Report incorrect behavior in Khaata
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and commit
+      description: Never include passwords, tokens, or real financial records.

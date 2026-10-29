@@ -1,0 +1,35 @@
+name: Feature / backlog task
+description: Track a scoped Khaata implementation task
+title: "[BACKLOG-ID] "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: backlog
+    attributes:
+      label: Backlog ID
+      placeholder: BE-003
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and user value
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Relevant docs / constraints
+      description: Link SRS, API, ADR, or UI/UX documents.
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test plan
+    validations:
+      required: true
