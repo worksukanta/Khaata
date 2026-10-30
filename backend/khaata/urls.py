@@ -9,3 +9,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include("khaata.api_urls")),
 ]
+
+handler404 = "khaata.core.views.handler404"
+handler500 = "khaata.core.views.handler500"

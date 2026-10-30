@@ -95,6 +95,22 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
+# Session / CSRF cookies (ADR-008)
+# ---------------------------------------------------------------------------
+# Secure-by-default: cookies are HTTPS-only unless an environment-specific
+# settings module (development.py / test.py) explicitly relaxes them for local
+# HTTP. A future production settings module therefore cannot accidentally
+# inherit insecure cookies.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = True
+# The SPA reads the csrftoken cookie and sends it as X-CSRFToken, so the CSRF
+# cookie must NOT be HttpOnly (API_CONTRACT.md section 1).
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = True
+
+# ---------------------------------------------------------------------------
 # Django REST Framework defaults
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
@@ -106,4 +122,5 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    "EXCEPTION_HANDLER": "khaata.core.exceptions.custom_exception_handler",
 }

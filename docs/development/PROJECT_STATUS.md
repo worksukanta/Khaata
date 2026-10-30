@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-29
-**Current phase:** BE-001 (Django project and settings) implementation complete on `feat/BE-001-django-settings`, awaiting user review and merge. BOOT-001 was previously merged. Application implementation has started with the backend foundation.
+**Current phase:** BE-002 (Custom user and authentication) implementation complete on `feat/BE-002-auth-endpoints`, awaiting user review and merge. Application implementation continues on the backend foundation.
 
 ## Approved baselines
 
@@ -23,8 +23,8 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BE-001 is complete (pending user merge). Next: `BE-002` (custom user authentication: registration, login, logout, current user, CSRF bootstrap). `BOOT-002` (CI baseline) can follow once BE-001 is merged.
+Step 5 — vertical-slice implementation continues. BE-002 is complete (pending user merge). Next: `BE-003` (Books and monthly ensure) or `BOOT-002` (CI baseline).
 
 ## Last known verification
 
-BE-001: Django 5.1 + DRF 3.17 installed; Django system check clean (0 issues); 21 tests pass with in-memory SQLite; `makemigrations --check --dry-run` reports no changes; health endpoint verified via test client; no secrets committed; `backend/.gitkeep` removed and replaced with real files.
+BE-002 (after security review): Django 5.2.18 + DRF 3.18.3; `manage.py check` clean (0 issues); 85 tests pass with zero deprecation warnings under `-W error::DeprecationWarning` using in-memory SQLite (PostgreSQL not exercised); `makemigrations --check --dry-run` reports no changes. Review found and fixed missing CSRF enforcement on anonymous login/register; now verified with `Client(enforce_csrf_checks=True)`. Login throttling (architecture hardening item) is not implemented. No secrets committed.

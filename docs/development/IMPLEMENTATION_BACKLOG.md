@@ -32,9 +32,15 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: fresh setup instructions work; secrets absent from repo; health endpoint responds; tests pass.
 
 ### BE-002 — Custom user and authentication
-- Status: TODO
-- Registration, login, logout, current user, CSRF bootstrap.
-- Acceptance: auth tests, password validation, CSRF tests, cross-user isolation.
+- Status: IN_PROGRESS (implementation complete on `feat/BE-002-auth-endpoints`; awaiting user review and merge)
+- Implemented full authentication slice: `GET /api/v1/auth/csrf/`, `POST /api/v1/auth/register/`, `POST /api/v1/auth/login/`, `POST /api/v1/auth/logout/`, `GET /api/v1/auth/me/`, `PATCH /api/v1/auth/me/`.
+- Session-cookie authentication with CSRF protection and bootstrap endpoint.
+- Registration with email normalization (case-insensitive uniqueness), min length 10 + Django password validators, optional display_name, no auto-login.
+- Standard error envelope `{ "error": { "code": "...", "message": "...", "details": { ... } } }` normalized via `khaata.core.exceptions.custom_exception_handler`.
+- Security review pass: login and register now enforce CSRF for anonymous callers (`CsrfEnforcedAnonymousAuthentication`); secure-by-default cookie settings; JSON 404/500 handlers for `/api/`; IntegrityError race on registration handled.
+- Total 85 tests pass with zero deprecation warnings under `-W error::DeprecationWarning`; Django system check is clean.
+- Deferred (not in API contract): login throttling mentioned in `SYSTEM_ARCHITECTURE.md` section on security; no throttle classes configured. Track for a hardening/deployment task.
+- Acceptance: auth tests, password validation, CSRF tests, cross-user isolation verified.
 
 ### BE-003 — Books and monthly ensure
 - Status: TODO
