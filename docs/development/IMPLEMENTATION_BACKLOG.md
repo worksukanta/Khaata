@@ -73,9 +73,14 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: ownership, category compatibility, active-only references on write, date/month behavior, totals exclude deleted records.
 
 ### BE-006 — Budgets and allocations
-- Status: TODO
+- Status: IN_PROGRESS (implementation complete in the working tree on `feat/BE-006-budgets-allocations`; uncommitted — the user handles Git; awaiting user review and merge. Implementation complete ≠ merged.)
+- Created `khaata.apps.budgets` (per `SYSTEM_ARCHITECTURE.md` section 4) with `Budget` and `BudgetAllocation` models, migration `0001_initial`, services, serializers, views, URLs, admin. Registered in `INSTALLED_APPS`; routed at `/api/v1/budgets/`.
+- Database constraints: `budget_scope_valid`, `budget_scope_fields_consistency` (MONTHLY_OVERALL = year + month 1–12 + no book; EVENT = book + no year/month), `budget_total_limit_non_negative`, partial unique `unique_monthly_budget_per_owner_year_month` (`WHERE scope='MONTHLY_OVERALL'`), partial unique `unique_event_budget_per_book` (`WHERE scope='EVENT'`); allocations: `unique_budget_allocation_budget_category`, `budget_allocation_amount_non_negative`. `Budget.book` and `BudgetAllocation.category` are `PROTECT`; allocations `CASCADE` with their budget; `Budget.owner` `CASCADE`.
+- Endpoints: `GET/POST /api/v1/budgets/` (filters `scope`, `year`, `month`, `book_id`; fixed newest-period-first order), `GET/PATCH /api/v1/budgets/{id}/`, `PUT /api/v1/budgets/{id}/allocations/`. No DELETE (not in contract).
+- Services: `create_budget`, `update_budget`, `replace_allocations` (atomic, parent budget row locked with `select_for_update`), `calculate_budget_spending`, `classify_utilization`. Spending is always derived from `Transaction.objects` (active-only) EXPENSE rows; nothing derived is stored.
+- 162 new tests (77 model/service, 85 API); 517 total pass under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised — locking, partial unique indexes and concurrency are untested there).
 - Monthly/event budgets, atomic allocation replacement, derived utilization.
-- Acceptance: allocation cap under concurrency; zero-budget and overspending cases tested.
+- Acceptance: allocation cap under concurrency (service-level lock implemented; true concurrency needs PostgreSQL to verify); zero-budget and overspending cases tested.
 
 ### BE-007 — Reports and CSV export
 - Status: TODO

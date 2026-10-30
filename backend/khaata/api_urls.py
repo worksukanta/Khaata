@@ -15,6 +15,7 @@ urlpatterns = [
     path("health/", HealthView.as_view(), name="health"),
     path("auth/", include("khaata.apps.accounts.urls")),
     path("books/", include("khaata.apps.books.urls")),
+    path("budgets/", include("khaata.apps.budgets.urls")),
     path("categories/", include(category_urlpatterns)),
     path("payment-methods/", include(payment_method_urlpatterns)),
     path("transactions/", include(transaction_urlpatterns)),

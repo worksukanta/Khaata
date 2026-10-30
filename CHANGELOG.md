@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### BE-006 — Budgets and allocations (+ final review correction)
+- Added `khaata.apps.budgets` with `Budget` (UUID PK; `owner` CASCADE; `scope` `MONTHLY_OVERALL`/`EVENT`; nullable `book` PROTECT; nullable `year`/`month`; `total_limit` `Decimal(14,2)`; timestamps) and `BudgetAllocation` (UUID PK; `budget` CASCADE; `category` PROTECT; `amount` `Decimal(14,2)`) models, migration `0001_initial`, admin, services, serializers, views and URLs. Registered in `INSTALLED_APPS` and routed at `/api/v1/budgets/`.
+- Database constraints: `budget_scope_valid`, `budget_scope_fields_consistency`, `budget_total_limit_non_negative`, partial unique `unique_monthly_budget_per_owner_year_month` and `unique_event_budget_per_book`, `unique_budget_allocation_budget_category`, `budget_allocation_amount_non_negative`.
+- Endpoints: `GET/POST /api/v1/budgets/` (filters `scope`, `year`, `month`, `book_id`), `GET/PATCH /api/v1/budgets/{id}/`, `PUT /api/v1/budgets/{id}/allocations/` (atomic full replacement under a budget row lock). User-scoped (cross-user → 404), CSRF-enforced on writes, paginated list.
+- Spending is derived on every read from active EXPENSE transactions: a monthly budget counts every owned book by `transaction_date` within the calendar month (no double counting); an event budget counts only its event book regardless of date. Income and soft-deleted transactions are excluded. Remaining may be negative; utilization is Decimal-based and zero-limit safe; statuses `ON_TRACK` / `NEAR_LIMIT` (>= 80%) / `OVER_BUDGET` / `UNBUDGETED_SPENDING`. Overspending never blocks a transaction.
+- Allocation rules: each category once, amount >= 0, active owned EXPENSE categories only, sum <= `total_limit`; `total_limit` cannot be lowered below the allocated total; `scope`/`book_id` immutable.
+- `docs/api/openapi.yaml`: documented budget paths, request/response schemas and error behaviour.
+- **Final review correction:** `BudgetAllocationInline` now uses a custom `BudgetAllocationFormSet` with a `clean()` method that enforces `sum(allocations) <= total_limit` before any DB write; correctly excludes deleted rows and handles multi-row submissions atomically. Added `test_budgets_admin.py` with 15 tests (8 formset unit tests + 7 admin change-view integration tests).
+- 177 new tests (162 original + 15 admin); full suite 532 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised). Implementation complete; not yet merged.
+
 ### BE-005 — Transactions
 - Added `Transaction` model to `khaata.apps.transactions` (UUID PK; `book` FK PROTECT; nullable `category`/`payment_method` FKs PROTECT; `type`; `amount` `Decimal(14,2)`; `transaction_date`; `description` (500); `created_at`/`updated_at`; `deleted_at`) and migration `0002_transaction`.
 - Database constraints/indexes: `transaction_amount_positive` (amount > 0), `transaction_type_valid`; partial indexes `(book, transaction_date)` and `(transaction_date)` `WHERE deleted_at IS NULL`. `Transaction.objects` is the active-only manager; `Transaction.all_objects` is the unrestricted audit/admin manager.

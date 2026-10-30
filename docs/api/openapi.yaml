@@ -374,68 +374,126 @@ paths:
   /budgets/:
     get:
       summary: List budgets
+      description: >-
+        Owner-scoped, paginated. Filters combine with AND; malformed values return 400. Fixed
+        deterministic order: newest period first (budgets without a period, i.e. event budgets,
+        last), then scope, `-created_at`, `-id`. There is no `ordering` parameter. Each item carries
+        the same derived figures as the detail endpoint.
       parameters:
         - in: query
           name: scope
           schema: { type: string, enum: [MONTHLY_OVERALL, EVENT] }
         - in: query
           name: year
-          schema: { type: integer }
+          schema: { type: integer, minimum: 2000, maximum: 2200 }
         - in: query
           name: month
           schema: { type: integer, minimum: 1, maximum: 12 }
         - in: query
           name: book_id
           schema: { type: string, format: uuid }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
       responses:
-        "200": { description: Paginated budgets }
+        "200":
+          description: Paginated budgets
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedBudgets" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     post:
       summary: Create budget
+      description: >-
+        `MONTHLY_OVERALL` requires `year` (2000-2200) and `month` (1-12) and rejects `book_id`; no
+        monthly book needs to exist. `EVENT` requires `book_id` of one of the user's EVENT books and
+        rejects `year`/`month`. One monthly budget per user/month and one event budget per book
+        (duplicate returns 400). A missing or other-user `book_id` returns an identical 400 on
+        `book_id`. `total_limit` must be >= 0 (zero allowed) with at most 2 decimal places.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/BudgetWrite" }
       responses:
-        "201": { description: Budget created }
+        "201":
+          description: Budget created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Budget" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /budgets/{id}/:
     parameters:
       - $ref: "#/components/parameters/UUID"
     get:
       summary: Retrieve budget with calculated utilization
+      description: >-
+        Spending is derived on every read from active EXPENSE transactions (never stored). A
+        MONTHLY_OVERALL budget counts expenses from every book the user owns (any type, archived or
+        not) dated inside the calendar month; an EVENT budget counts expenses of its event book
+        regardless of date. Income and soft-deleted transactions never count; each transaction counts
+        once per budget. Uncategorised spending consumes the overall limit but no category allocation.
       responses:
-        "200": { description: Budget details and calculated totals }
+        "200":
+          description: Budget details and calculated totals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Budget" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
-      summary: Update budget limit
+      summary: Update budget limit / monthly period
+      description: >-
+        Partial update of `total_limit` and, for MONTHLY_OVERALL budgets, `year`/`month`. `scope` and
+        `book_id` are immutable (a differing value returns 400; the same value is accepted).
+        `total_limit` may not be lowered below the current allocation total (400). Existing spending
+        above a reduced limit is allowed; the response reports OVER_BUDGET. Transactions are never
+        modified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BudgetUpdate" }
       responses:
-        "200": { description: Budget updated }
+        "200":
+          description: Budget updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Budget" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /budgets/{id}/allocations/:
     put:
       summary: Atomically replace category allocations
+      description: >-
+        Full replacement inside one database transaction with the parent budget row locked
+        (`select_for_update`). Each category at most once; amounts >= 0 (zero allowed); every
+        category must be an active EXPENSE category owned by the user; the sum must not exceed
+        `total_limit` (equal is allowed). An empty list removes all allocations. Any failure leaves
+        the previous allocations untouched. A missing or other-user category returns the same
+        generic message. Item-level errors are keyed by the zero-based item index, e.g.
+        `{"allocations": {"0": {"category_id": ["..."]}}}`; the total-limit error is
+        `{"allocations": ["..."]}`. An existing allocation to a since-deactivated category stays
+        visible, but a replacement that re-submits it is a new selection and is rejected.
       parameters:
         - $ref: "#/components/parameters/UUID"
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [allocations]
-              properties:
-                allocations:
-                  type: array
-                  items:
-                    type: object
-                    required: [category_id, amount]
-                    properties:
-                      category_id: { type: string, format: uuid }
-                      amount: { $ref: "#/components/schemas/Money" }
+            schema: { $ref: "#/components/schemas/AllocationsReplace" }
       responses:
-        "200": { description: Allocations replaced }
+        "200":
+          description: Allocations replaced; returns the full budget
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Budget" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /reports/monthly/:
     get:
       summary: Combined monthly dashboard
@@ -597,15 +655,98 @@ components:
         description: { type: string, nullable: true, maxLength: 500 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    SignedMoney:
+      type: string
+      description: Decimal string that may be negative (e.g. remaining budget when overspent).
+      pattern: '^-?\d{1,12}\.\d{2}$'
+      examples: ["-100.00"]
     BudgetWrite:
       type: object
       required: [scope, total_limit]
       properties:
         scope: { type: string, enum: [MONTHLY_OVERALL, EVENT] }
-        year: { type: integer }
-        month: { type: integer, minimum: 1, maximum: 12 }
-        book_id: { type: string, format: uuid }
+        year: { type: integer, minimum: 2000, maximum: 2200, description: "MONTHLY_OVERALL only" }
+        month: { type: integer, minimum: 1, maximum: 12, description: "MONTHLY_OVERALL only" }
+        book_id: { type: string, format: uuid, description: "EVENT only" }
         total_limit: { $ref: "#/components/schemas/Money" }
+    BudgetUpdate:
+      type: object
+      description: Partial update; all fields optional. `scope` and `book_id` are immutable.
+      properties:
+        scope: { type: string, enum: [MONTHLY_OVERALL, EVENT] }
+        year: { type: integer, minimum: 2000, maximum: 2200, nullable: true }
+        month: { type: integer, minimum: 1, maximum: 12, nullable: true }
+        book_id: { type: string, format: uuid, nullable: true }
+        total_limit: { $ref: "#/components/schemas/Money" }
+    AllocationsReplace:
+      type: object
+      required: [allocations]
+      properties:
+        allocations:
+          type: array
+          items:
+            type: object
+            required: [category_id, amount]
+            properties:
+              category_id: { type: string, format: uuid }
+              amount: { $ref: "#/components/schemas/Money" }
+    BudgetAllocation:
+      type: object
+      properties:
+        category:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            type: { type: string, enum: [EXPENSE] }
+            is_active: { type: boolean }
+        amount: { $ref: "#/components/schemas/Money" }
+        spent: { $ref: "#/components/schemas/Money" }
+        remaining: { $ref: "#/components/schemas/SignedMoney" }
+        utilization_percent: { type: string, nullable: true, pattern: '^\d{1,12}\.\d{2}$' }
+        status:
+          type: string
+          enum: [ON_TRACK, NEAR_LIMIT, OVER_BUDGET, UNBUDGETED_SPENDING]
+    Budget:
+      type: object
+      description: >-
+        Budget definition plus values derived from active expense transactions on every read.
+        `utilization_percent` is spent / limit * 100 (Decimal, half-up, 2 dp) and is `null` only when
+        the limit is 0 and spent > 0 (UNBUDGETED_SPENDING). Status uses the exact ratio: OVER_BUDGET
+        when spent > limit; NEAR_LIMIT when 80% <= ratio <= 100%; otherwise ON_TRACK. A zero limit
+        with zero spending is ON_TRACK / "0.00". `NOT_SET` appears only in report endpoints (BE-007).
+      properties:
+        id: { type: string, format: uuid }
+        scope: { type: string, enum: [MONTHLY_OVERALL, EVENT] }
+        book_id: { type: string, format: uuid, nullable: true }
+        year: { type: integer, nullable: true }
+        month: { type: integer, nullable: true }
+        total_limit: { $ref: "#/components/schemas/Money" }
+        allocations:
+          type: array
+          description: Ordered by category name.
+          items: { $ref: "#/components/schemas/BudgetAllocation" }
+        allocated_total: { $ref: "#/components/schemas/Money" }
+        unallocated: { $ref: "#/components/schemas/Money", description: "total_limit - allocated_total" }
+        spent: { $ref: "#/components/schemas/Money" }
+        remaining: { $ref: "#/components/schemas/SignedMoney", description: "total_limit - spent; negative when overspent" }
+        utilization_percent: { type: string, nullable: true, pattern: '^\d{1,12}\.\d{2}$' }
+        status:
+          type: string
+          enum: [ON_TRACK, NEAR_LIMIT, OVER_BUDGET, UNBUDGETED_SPENDING]
+        unallocated_spent: { $ref: "#/components/schemas/Money", description: "Spending not covered by any allocation (uncategorised plus categories without an allocation)" }
+        uncategorised_spent: { $ref: "#/components/schemas/Money" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PaginatedBudgets:
+      type: object
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/Budget" }
     MonthlyReport:
       type: object
       required: [period, currency, income_total, expense_total, net_cash_flow, book_type_breakdown]
