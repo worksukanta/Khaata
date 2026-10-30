@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "rest_framework",
     # Khaata apps
     "khaata.apps.accounts",
+    "khaata.apps.books",
     "khaata.apps.health",
 ]
 
@@ -122,5 +123,6 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    "MAX_PAGE_SIZE": 100,
     "EXCEPTION_HANDLER": "khaata.core.exceptions.custom_exception_handler",
 }

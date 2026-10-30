@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### BE-003 — Books and monthly ensure (review pass)
+- Created `khaata.apps.books` app with `Book` model, database constraints, services, serializers, views, and URL routing.
+- Implemented `Book` model with UUID PK, owner FK, type enum (`MONTHLY`, `EVENT`, `GENERAL`), name, description, year, month, start_date, end_date, opening_balance (`DecimalField(max_digits=14, decimal_places=2)`), is_archived, created_at, and updated_at.
+- Database constraints enforced:
+  - `book_type_year_month_consistency`: check constraint ensuring `MONTHLY` books have non-null year and month (1-12), and `EVENT`/`GENERAL` books have null year and month.
+  - `unique_monthly_book_per_user_year_month`: partial unique constraint on `(owner_id, year, month) WHERE type='MONTHLY'`.
+  - `book_end_date_gte_start_date`: check constraint ensuring `end_date >= start_date` when both are provided.
+  - `book_opening_balance_non_negative`: check constraint ensuring `opening_balance >= 0`.
+- Implemented service layer (`khaata.apps.books.services`):
+  - `ensure_monthly_book(user, year, month)`: idempotent ensure operation returning `(book, created)` with atomic transaction and concurrency race condition handling (catching `IntegrityError`).
+  - `create_book(user, data)`: creates `EVENT` or `GENERAL` books; rejects direct creation of `MONTHLY` books.
+  - `update_book(book, data)`: allows updating editable fields on active `EVENT`/`GENERAL` books; prevents editing archived books, monthly books, or changing book type.
+  - `archive_book(book)` and `restore_book(book)`: toggles `is_archived` on `EVENT`/`GENERAL` books; rejects archiving/restoring monthly books.
+- Implemented endpoints under `/api/v1/books/`:
+  - `GET /api/v1/books/`: paginated list scoped to authenticated user, supporting filters (`type`, `is_archived`), substring search (`search`), and ordering (`name`, `-name`, `created_at`, `-created_at`).
+  - `POST /api/v1/books/`: create `EVENT` or `GENERAL` books (returns 201); rejects `MONTHLY` type with 400 validation error.
+  - `POST /api/v1/books/monthly/{year}/{month}/ensure/`: idempotent monthly ensure endpoint returning 201 when created, 200 when already present.
+  - `GET /api/v1/books/{id}/`: retrieves owned book; returns 404 for cross-user or nonexistent IDs without leaking resource existence.
+  - `PATCH /api/v1/books/{id}/`: updates metadata for owned event/general books; returns 400 on archived or monthly books.
+  - `POST /api/v1/books/{id}/archive/` & `POST /api/v1/books/{id}/restore/`: archives/restores owned event/general books; returns 400 for monthly books.
+- Added comprehensive unit and API integration test suite (65 new tests, total 150 tests across test suite).
+- **Review corrections (BE-003 review pass):**
+  - `services.py`: `ensure_monthly_book` — broad `IntegrityError` catch narrowed. The race-recovery `Book.objects.get()` is now wrapped in `try/except Book.DoesNotExist` that re-raises the captured `IntegrityError` when the row is unexpectedly absent, preventing CheckConstraint violations from being silently swallowed.
+  - `settings/base.py`: Added `MAX_PAGE_SIZE: 100` to `REST_FRAMEWORK` to match the API contract's "maximum: 100" pagination rule.
+  - `test_books_api.py`: Corrected misindented section comment (lines 199–201 were indented inside `test_list_books_pagination`; moved to module level).
+- All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWarning`; `manage.py check` clean; `makemigrations --check --dry-run` reports no changes.
+
 ### BE-002 — Custom user authentication endpoints
 - Implemented `GET /api/v1/auth/csrf/` bootstrap endpoint for setting CSRF cookie.
 - Implemented `POST /api/v1/auth/register/` supporting email, password (min 10 chars + Django validators), optional `display_name`, with email normalization (case-insensitive uniqueness) and no automatic login.

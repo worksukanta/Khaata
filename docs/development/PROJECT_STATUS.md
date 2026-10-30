@@ -1,7 +1,7 @@
 # Khaata Project Status
 
-**Last updated:** 2026-10-29
-**Current phase:** BE-002 (Custom user and authentication) implementation complete on `feat/BE-002-auth-endpoints`, awaiting user review and merge. Application implementation continues on the backend foundation.
+**Last updated:** 2026-10-30
+**Current phase:** BE-003 (Books and monthly ensure) implementation complete on `feat/BE-003-books-monthly-ensure`, awaiting user review and merge. Application implementation continues on the backend foundation.
 
 ## Approved baselines
 
@@ -23,8 +23,8 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BE-002 is complete (pending user merge). Next: `BE-003` (Books and monthly ensure) or `BOOT-002` (CI baseline).
+Step 5 — vertical-slice implementation continues. BE-003 is complete (pending user merge). Next: `BE-004` (Categories and payment methods) or `BOOT-002` (CI baseline).
 
 ## Last known verification
 
-BE-002 (after security review): Django 5.2.18 + DRF 3.18.3; `manage.py check` clean (0 issues); 85 tests pass with zero deprecation warnings under `-W error::DeprecationWarning` using in-memory SQLite (PostgreSQL not exercised); `makemigrations --check --dry-run` reports no changes. Review found and fixed missing CSRF enforcement on anonymous login/register; now verified with `Client(enforce_csrf_checks=True)`. Login throttling (architecture hardening item) is not implemented. No secrets committed.
+BE-003 (post-review): Django 5.2.18 + DRF 3.18.3; `manage.py check` clean (0 issues); 150 tests pass with zero deprecation warnings under `-W error::DeprecationWarning` using in-memory SQLite (PostgreSQL not exercised); `makemigrations --check --dry-run` reports no changes; `git diff --check` clean. Three defects fixed during review: (1) `ensure_monthly_book` broad `IntegrityError` catch narrowed to re-raise on missing-row case; (2) `MAX_PAGE_SIZE: 100` added to `REST_FRAMEWORK` settings to match contract; (3) misindented test-file section comment fixed. Monthly ensure uniqueness, race safety, event/general CRUD, metadata update, and archive/restore rules all verified. No secrets committed.

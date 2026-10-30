@@ -1,10 +1,16 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-007-BE-002`
+`KH-CP-009-BE-003-REVIEW`
 
 ## State
-Steps 1–4 approved. BOOT-001 was committed by the user. BE-001 is complete. BE-002 authentication endpoints implementation is complete and security-reviewed on `feat/BE-002-auth-endpoints`, awaiting user review and merge. Implemented `GET /api/v1/auth/csrf/`, `POST /api/v1/auth/register/`, `POST /api/v1/auth/login/`, `POST /api/v1/auth/logout/`, `GET /api/v1/auth/me/`, and `PATCH /api/v1/auth/me/`. Review fix: login/register now enforce CSRF for anonymous callers via `khaata.core.authentication.CsrfEnforcedAnonymousAuthentication` (the earlier `authentication_classes = []` silently bypassed CSRF). Frontend must call `GET /auth/csrf/` and send `X-CSRFToken` on login and register, and re-read the `csrftoken` cookie after login (Django rotates it). Base settings now default cookies to Secure; dev/test relax it. All 85 tests pass with zero deprecation warnings under `-W error::DeprecationWarning`; system check and migrations check are clean. PostgreSQL was not exercised. Login throttling is not implemented (not in the API contract; architecture lists it as hardening). No secrets committed.
+Steps 1–4 approved. BOOT-001 was committed by the user. BE-001 and BE-002 are complete. BE-003 (Books and monthly ensure) implementation was reviewed and three defects fixed on `feat/BE-003-books-monthly-ensure`; now awaiting user review and merge.
+
+Implemented `Book` model with UUID PK and database constraints (`book_type_year_month_consistency`, `unique_monthly_book_per_user_year_month`, `book_end_date_gte_start_date`, `book_opening_balance_non_negative`). Implemented service layer with `ensure_monthly_book` (atomic, race-safe, idempotent), `create_book`, `update_book`, `archive_book`, `restore_book`. Implemented endpoints `GET /api/v1/books/`, `POST /api/v1/books/`, `POST /api/v1/books/monthly/{year}/{month}/ensure/`, `GET /api/v1/books/{id}/`, `PATCH /api/v1/books/{id}/`, `POST /api/v1/books/{id}/archive/`, and `POST /api/v1/books/{id}/restore/`.
+
+Review fixes applied: (1) `ensure_monthly_book` in `services.py` — broad `IntegrityError` catch narrowed: recovery `get()` is now wrapped in `try/except Book.DoesNotExist` that re-raises the original `IntegrityError` when the row is unexpectedly absent, preventing CheckConstraint violations from being silently swallowed. (2) `MAX_PAGE_SIZE: 100` added to `REST_FRAMEWORK` in `base.py` to match the API contract's stated maximum page size. (3) Misindented section comment in `test_books_api.py` (lines 199–201 were inside `test_list_books_pagination`) corrected to module level.
+
+All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWarning`; Django system check and migrations check are clean; `git diff --check` is clean. PostgreSQL was not exercised (used SQLite). No secrets committed.
 
 ## Read first
 1. `AGENTS.md`
@@ -18,30 +24,30 @@ Steps 1–4 approved. BOOT-001 was committed by the user. BE-001 is complete. BE
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-After user review and merge: `BE-003` — Books and monthly ensure (models, constraints, services, serializers, endpoints `/books/`, `/books/{id}/`, `/books/monthly/{year}/{month}/ensure/`, `/books/{id}/archive/`, `/books/{id}/restore/`). Refer to `docs/api/API_CONTRACT.md` section 3 and `docs/architecture/DATABASE_DESIGN.md`.
+After user review and merge: `BE-004` — Categories and payment methods (models, seed defaults on registration, case-insensitive unique constraints, user-scoped CRUD endpoints `/categories/`, `/payment-methods/`). Refer to `docs/api/API_CONTRACT.md` section 4 and `docs/architecture/DATABASE_DESIGN.md`.
 
-## BE-002 file inventory (for reconciliation by next agent)
+## BE-003 file inventory (for reconciliation by next agent)
 New files created in `backend/`:
-- `khaata/core/__init__.py`
-- `khaata/core/exceptions.py`
-- `khaata/core/authentication.py` (review pass)
-- `khaata/core/views.py` (review pass: JSON 404/500 handlers)
-- `tests/test_settings_security.py` (review pass)
-- `khaata/apps/accounts/serializers.py`
-- `khaata/apps/accounts/views.py`
-- `khaata/apps/accounts/urls.py`
-- `khaata/apps/accounts/test_auth_api.py`
-- `tests/test_exceptions.py`
+- `khaata/apps/books/__init__.py`
+- `khaata/apps/books/apps.py`
+- `khaata/apps/books/models.py`
+- `khaata/apps/books/admin.py`
+- `khaata/apps/books/services.py`
+- `khaata/apps/books/serializers.py`
+- `khaata/apps/books/views.py`
+- `khaata/apps/books/urls.py`
+- `khaata/apps/books/tests.py`
+- `khaata/apps/books/test_books_api.py`
+- `khaata/apps/books/migrations/__init__.py`
+- `khaata/apps/books/migrations/0001_initial.py`
 
 Modified files:
-- `backend/khaata/settings/base.py` — added `EXCEPTION_HANDLER` configuration; review pass added secure-by-default session/CSRF cookie settings
-- `backend/khaata/urls.py` — review pass: `handler404`/`handler500`
-- `backend/khaata/core/exceptions.py`, `backend/khaata/apps/accounts/{views,serializers,test_auth_api}.py` — review pass fixes/tests
-- `backend/khaata/api_urls.py` — included accounts URLs under `auth/`
-- `docs/development/IMPLEMENTATION_BACKLOG.md` — BE-002 status updated
+- `backend/khaata/settings/base.py` — added `khaata.apps.books` to `INSTALLED_APPS`
+- `backend/khaata/api_urls.py` — included books URLs under `books/`
+- `docs/development/IMPLEMENTATION_BACKLOG.md` — BE-003 status updated
 - `docs/development/PROJECT_STATUS.md` — phase and verification updated
-- `docs/development/HANDOFF.md` — checkpoint updated to `KH-CP-007-BE-002`
-- `CHANGELOG.md` — BE-002 entry added
+- `docs/development/HANDOFF.md` — checkpoint updated to `KH-CP-008-BE-003`
+- `CHANGELOG.md` — BE-003 entry added
 
 ## Required agent behavior
 - Inspect `git status`, current branch, latest commit, and file tree before edits.

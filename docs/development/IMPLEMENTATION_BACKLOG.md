@@ -43,9 +43,13 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: auth tests, password validation, CSRF tests, cross-user isolation verified.
 
 ### BE-003 — Books and monthly ensure
-- Status: TODO
-- Models, constraints, services, serializers, endpoints and tests.
-- Acceptance: monthly uniqueness under repeated/concurrent calls; event/general CRUD; archive rules.
+- Status: IN_PROGRESS (implementation complete on `feat/BE-003-books-monthly-ensure`; awaiting user review and merge)
+- Created `khaata.apps.books` app with `Book` model, database constraints, services, serializers, views, and URL routing.
+- Database constraints: `book_type_year_month_consistency`, `unique_monthly_book_per_user_year_month`, `book_end_date_gte_start_date`, `book_opening_balance_non_negative`.
+- Service layer: `ensure_monthly_book` (idempotent, atomic, concurrent-race safe), `create_book` (rejects monthly), `update_book` (protects monthly and archived), `archive_book`/`restore_book` (protects monthly).
+- Endpoints: `GET /api/v1/books/`, `POST /api/v1/books/`, `POST /api/v1/books/monthly/{year}/{month}/ensure/`, `GET /api/v1/books/{id}/`, `PATCH /api/v1/books/{id}/`, `POST /api/v1/books/{id}/archive/`, `POST /api/v1/books/{id}/restore/`.
+- Total 150 tests pass with zero deprecation warnings under `-W error::DeprecationWarning`; Django system check is clean.
+- Acceptance: monthly uniqueness under repeated/concurrent calls; event/general CRUD; archive rules verified.
 
 ### BE-004 — Categories and payment methods
 - Status: TODO
