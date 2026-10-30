@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### BE-004 — Categories and payment methods (post-review)
+- Added `khaata.apps.transactions` app with `Category` and `PaymentMethod` models (UUID PKs, owner FK, `is_active`, timestamps; categories also `type` INCOME/EXPENSE and `is_default`) and migration `0001_initial`.
+- Database constraints: case-insensitive unique `(owner, type, lower(name))` for categories, case-insensitive unique `(owner, lower(name))` for payment methods, and a category type check constraint.
+- Endpoints: `GET/POST /api/v1/categories/`, `PATCH /api/v1/categories/{id}/`, `GET/POST /api/v1/payment-methods/`, `PATCH /api/v1/payment-methods/{id}/`; user-scoped (cross-user → 404), CSRF-enforced on writes, filters `type`/`is_active`/`search`, paginated. Records are deactivated, never deleted; category `type` is immutable.
+- Registration now atomically seeds default categories and payment methods (`seed_user_defaults`, idempotent).
+- Default categories (11 EXPENSE + 5 INCOME): Food & Dining, Groceries, Transport, Rent, Utilities, Shopping, Health, Entertainment, Education, Travel, Other (EXPENSE); Salary, Business, Investments, Gifts, Other (INCOME). These are an implementation choice; approved docs specify "sensible defaults" without an explicit list.
+- Default payment methods (6, contract-specified): Cash, UPI, Bank Transfer, Debit Card, Credit Card, Other.
+- **Review corrections (BE-004 review pass):**
+  - Added `management/commands/seed_defaults.py` management command for idempotent backfill of existing users: `python manage.py seed_defaults [--dry-run] [--email <email>] [--include-inactive]`.
+  - `docs/api/openapi.yaml`: `UpdateCategoryRequest` schema now documents the accepted `type` field (must equal existing type; a change returns 400).
+- Updated `docs/api/openapi.yaml` for the new paths and schemas.
+- 67 new tests; full suite 217 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
+
 ### BE-003 — Books and monthly ensure (review pass)
 - Created `khaata.apps.books` app with `Book` model, database constraints, services, serializers, views, and URL routing.
 - Implemented `Book` model with UUID PK, owner FK, type enum (`MONTHLY`, `EVENT`, `GENERAL`), name, description, year, month, start_date, end_date, opening_balance (`DecimalField(max_digits=14, decimal_places=2)`), is_archived, created_at, and updated_at.

@@ -7,8 +7,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
+
+from khaata.apps.transactions.services import seed_user_defaults
 
 User = get_user_model()
 
@@ -59,18 +61,24 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        try:
-            return User.objects.create_user(
-                email=validated_data["email"],
-                password=validated_data["password"],
-                display_name=validated_data.get("display_name", ""),
-            )
-        except IntegrityError:
-            # Concurrent registration of the same email: the DB unique
-            # constraint is authoritative; report it as a validation error.
-            raise serializers.ValidationError(
-                {"email": ["A user with this email address already exists."]}
-            )
+        # User creation and default seeding (categories, payment methods) are
+        # atomic: a failed seed must not leave a user without defaults.
+        with transaction.atomic():
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        email=validated_data["email"],
+                        password=validated_data["password"],
+                        display_name=validated_data.get("display_name", ""),
+                    )
+            except IntegrityError:
+                # Concurrent registration of the same email: the DB unique
+                # constraint is authoritative; report it as a validation error.
+                raise serializers.ValidationError(
+                    {"email": ["A user with this email address already exists."]}
+                )
+            seed_user_defaults(user)
+        return user
 
 
 class LoginSerializer(serializers.Serializer):

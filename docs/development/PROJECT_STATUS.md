@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-30
-**Current phase:** BE-003 (Books and monthly ensure) implementation complete on `feat/BE-003-books-monthly-ensure`, awaiting user review and merge. Application implementation continues on the backend foundation.
+**Current phase:** BE-004 (Categories and payment methods) implementation complete and independently reviewed on `feat/BE-004-categories-payment-methods`, awaiting user merge. BE-003 was committed on its own branch. Application implementation continues on the backend foundation.
 
 ## Approved baselines
 
@@ -23,8 +23,11 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BE-003 is complete (pending user merge). Next: `BE-004` (Categories and payment methods) or `BOOT-002` (CI baseline).
+Step 5 — vertical-slice implementation continues. BE-004 is complete (pending user merge). Next: `BE-005` (Transactions) or `BOOT-002` (CI baseline).
 
 ## Last known verification
 
+BE-004 (post-review): Django 5.2.18 + DRF 3.18.3; full suite `python -W error::DeprecationWarning -m pytest -v` → 217 passed (in-memory SQLite; PostgreSQL not exercised); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes; `git diff --check` → benign LF→CRLF warning on `docs/api/openapi.yaml` only (`.gitattributes` not configured; no code whitespace error). YAML syntax validated via `yaml.safe_load`; OpenAPI semantic validation not performed (no validator installed in venv). `seed_defaults` management command added and manually reviewed (not yet covered by automated tests).
+
+Previous (BE-003, post-review):
 BE-003 (post-review): Django 5.2.18 + DRF 3.18.3; `manage.py check` clean (0 issues); 150 tests pass with zero deprecation warnings under `-W error::DeprecationWarning` using in-memory SQLite (PostgreSQL not exercised); `makemigrations --check --dry-run` reports no changes; `git diff --check` clean. Three defects fixed during review: (1) `ensure_monthly_book` broad `IntegrityError` catch narrowed to re-raise on missing-row case; (2) `MAX_PAGE_SIZE: 100` added to `REST_FRAMEWORK` settings to match contract; (3) misindented test-file section comment fixed. Monthly ensure uniqueness, race safety, event/general CRUD, metadata update, and archive/restore rules all verified. No secrets committed.

@@ -52,14 +52,20 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: monthly uniqueness under repeated/concurrent calls; event/general CRUD; archive rules verified.
 
 ### BE-004 — Categories and payment methods
-- Status: TODO
-- User-scoped CRUD, registration seeding, case-insensitive uniqueness.
-- Acceptance: ownership and type validations covered.
+- Status: IN_PROGRESS (implementation complete and independently reviewed on `feat/BE-004-categories-payment-methods`; awaiting user merge)
+- Created `khaata.apps.transactions` app (per `SYSTEM_ARCHITECTURE.md` section 4) with `Category` and `PaymentMethod` models, migration `0001_initial`, services, serializers, views, URLs, admin. The `Transaction` model is intentionally not included (BE-005).
+- Database constraints: `unique_category_owner_type_lower_name` (functional unique on `lower(name), owner, type`), `category_type_valid` (check), `unique_payment_method_owner_lower_name` (functional unique on `lower(name), owner`).
+- Endpoints: `GET/POST /api/v1/categories/`, `PATCH /api/v1/categories/{id}/`, `GET/POST /api/v1/payment-methods/`, `PATCH /api/v1/payment-methods/{id}/`. No DELETE (deactivate via `is_active=false`); no detail GET (not in contract).
+- Registration (`POST /auth/register/`) now seeds default categories and the six payment methods in the same DB transaction as user creation; seeding is idempotent (`seed_user_defaults`).
+- **Review corrections (post-review):** Added `seed_defaults` management command for backfilling existing users; corrected OpenAPI `UpdateCategoryRequest` schema to document accepted `type` field.
+- 217 tests pass (full suite) under `-W error::DeprecationWarning` on in-memory SQLite; PostgreSQL not exercised.
+- Acceptance: ownership, type validations, case-insensitive uniqueness, CSRF, seeding covered.
 
 ### BE-005 — Transactions
 - Status: TODO
 - Decimal amounts, validation, soft delete, filters, pagination.
-- Acceptance: ownership, category compatibility, date/month behavior, totals exclude deleted records.
+- **Inactive-reference rule (decided in BE-004 review):** Service must reject creation/update of a transaction that references an inactive category or payment method. Existing transactions retain deactivated references (no cascade). Reactivation re-enables the option. This is a service-layer check; no schema change required.
+- Acceptance: ownership, category compatibility, active-only references on write, date/month behavior, totals exclude deleted records.
 
 ### BE-006 — Budgets and allocations
 - Status: TODO

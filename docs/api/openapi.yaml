@@ -174,23 +174,97 @@ paths:
           name: type
           schema: { type: string, enum: [INCOME, EXPENSE] }
         - in: query
+          name: is_active
+          schema: { type: boolean }
+        - in: query
           name: search
           schema: { type: string }
       responses:
-        "200": { description: Paginated categories }
+        "200":
+          description: Paginated categories
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedCategories" }
     post:
-      summary: Create a category
+      summary: Create a category (unique per user and type, case-insensitive name)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCategoryRequest" }
       responses:
-        "201": { description: Category created }
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /categories/{id}/:
+    parameters:
+      - $ref: "#/components/parameters/UUID"
+    patch:
+      summary: Rename or (de)activate a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCategoryRequest" }
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /payment-methods/:
     get:
       summary: List payment method labels
+      parameters:
+        - in: query
+          name: is_active
+          schema: { type: boolean }
+        - in: query
+          name: search
+          schema: { type: string }
       responses:
-        "200": { description: Paginated payment methods }
+        "200":
+          description: Paginated payment methods
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedPaymentMethods" }
     post:
-      summary: Create a payment method label
+      summary: Create a payment method label (unique per user, case-insensitive name)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePaymentMethodRequest" }
       responses:
-        "201": { description: Payment method created }
+        "201":
+          description: Payment method created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentMethod" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+  /payment-methods/{id}/:
+    parameters:
+      - $ref: "#/components/parameters/UUID"
+    patch:
+      summary: Rename or (de)activate a payment method
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePaymentMethodRequest" }
+      responses:
+        "200":
+          description: Payment method updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentMethod" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /transactions/:
     get:
       summary: List and filter active transactions
@@ -532,6 +606,68 @@ components:
         results:
           type: array
           items: { $ref: "#/components/schemas/Book" }
+    Category:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 80 }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        is_default: { type: boolean }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreateCategoryRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+    UpdateCategoryRequest:
+      type: object
+      description: >
+        Name and/or active status only. If `type` is supplied it must equal
+        the existing category type — the server rejects a change with 400.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        is_active: { type: boolean }
+        type: { type: string, enum: [INCOME, EXPENSE], description: "Must equal existing type. Provided for client-side idempotency; a change is rejected." }
+    PaginatedCategories:
+      type: object
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/Category" }
+    PaymentMethod:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 60 }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreatePaymentMethodRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+    UpdatePaymentMethodRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        is_active: { type: boolean }
+    PaginatedPaymentMethods:
+      type: object
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentMethod" }
+
     PaginatedTransactions:
       type: object
       properties:
