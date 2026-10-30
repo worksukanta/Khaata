@@ -62,7 +62,12 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: ownership, type validations, case-insensitive uniqueness, CSRF, seeding covered.
 
 ### BE-005 — Transactions
-- Status: TODO
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles Git; awaiting user review and merge)
+- Added `Transaction` model + migration `0002_transaction` to `khaata.apps.transactions`; constraints `transaction_amount_positive`, `transaction_type_valid`; partial indexes on `(book, transaction_date)` and `(transaction_date)` where `deleted_at IS NULL`; active-only default manager plus `all_objects`.
+- Services: `create_transaction`, `update_transaction`, `soft_delete_transaction` (atomic, row-locked, owner-scoped via `book.owner`).
+- Endpoints: `GET/POST /api/v1/transactions/`, `GET/PATCH/DELETE /api/v1/transactions/{id}/`; filters `book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search`, `ordering`; `include_deleted` is NOT supported (contract reserves it for a future workflow).
+- Implementation decisions (not explicit in the contract; see HANDOFF): referenced-object ownership failures in the body → 400 on the field with a generic "not found" message (identical for unknown and cross-user ids); archived books are read-only for create/move/edit/delete; MONTHLY book requires date within its month on create/move; repeated DELETE → 204; deleted transactions → 404 on GET/PATCH.
+- 138 new tests; 355 total pass under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
 - Decimal amounts, validation, soft delete, filters, pagination.
 - **Inactive-reference rule (decided in BE-004 review):** Service must reject creation/update of a transaction that references an inactive category or payment method. Existing transactions retain deactivated references (no cascade). Reactivation re-enables the option. This is a service-layer check; no schema change required.
 - Acceptance: ownership, category compatibility, active-only references on write, date/month behavior, totals exclude deleted records.

@@ -1,10 +1,28 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-011-BE-004-review`
+`KH-CP-012-BE-005`
 
 ## State
-Steps 1–4 approved. BOOT-001, BE-001, BE-002 and BE-003 were committed by the user. BE-004 (Categories and payment methods) is implemented in the working tree on `feat/BE-004-categories-payment-methods` (uncommitted; the user handles all Git operations) and has passed independent review. Awaiting user merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-004 were committed by the user (latest commit `8b6aca3`, BE-004). BE-005 (Transactions) is implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). Awaiting user review/merge.
+
+### BE-005 summary
+- `Transaction` model + migration `0002_transaction` in `khaata.apps.transactions` (reuses the BE-004 app; no new app/dependency). Fields per `DATABASE_DESIGN.md`; no `owner` column (not in the approved schema) — ownership is always `book.owner`. FKs to book/category/payment method are `PROTECT`. Constraints: `transaction_amount_positive`, `transaction_type_valid`. Partial indexes `txn_book_date_active_idx (book, transaction_date)` and `txn_date_active_idx (transaction_date)` `WHERE deleted_at IS NULL`. `Transaction.objects` = active-only; `Transaction.all_objects` = audit/admin (used by the admin site and the soft-delete service).
+- Services (`services.py`): `create_transaction(user, data)`, `update_transaction(user, txn_id, data)`, `soft_delete_transaction(user, txn_id)`. All atomic; the transaction row (and target book) is locked with `select_for_update`; lookups are owner-scoped (`book__owner=user`) and raise `Transaction.DoesNotExist` (views → 404) otherwise. Views/serializers contain no business rules beyond format validation.
+- Endpoints: `GET/POST /api/v1/transactions/`, `GET/PATCH/DELETE /api/v1/transactions/{id}/`. List filters: `book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search` (description `icontains`), `ordering` (`transaction_date|amount|created_at`, optionally `-`); default `-transaction_date,-created_at`, with `-id` as final tie-breaker for deterministic pagination. Malformed filter values → 400 `validation_error`; an unrecognised `ordering` silently falls back to the default (same as Books). `include_deleted` is not supported. Responses use the contract fields; `category` / `payment_method` are nested objects (`{id,name,type}` / `{id,name}`) or `null`; `book_id` is a plain UUID.
+- Rules implemented: amount > 0, ≤ 2 decimals, ≤ 12 integer digits (Decimal only; JSON numbers are parsed as exact Decimal); category type must equal transaction type (also re-checked when only `type` changes); newly selected inactive category/payment method → 400, while an unchanged existing (even inactive) reference is retained on PATCH; `null` clears; reactivated references selectable again; archived books reject create / move-into / edit / delete; MONTHLY books require `transaction_date` inside their year/month on create and on move; a date change of a transaction in a MONTHLY book to another month atomically moves it to that month's book via `ensure_monthly_book` (rolled back with the rest of the update on failure); event/general books keep their book on date change; soft delete is idempotent (repeat → 204, original `deleted_at` kept); deleted transactions → 404 on GET/PATCH.
+- Decisions not spelled out in the contract (please confirm during review):
+  1. Body references (`book_id`, `category_id`, `payment_method_id`) that are missing or belong to another user → **400 on that field** with an identical generic "… not found." message (no cross-user disclosure). The contract's "return 404" rule is applied to path ids (`/transactions/{id}/`).
+  2. Archived-book transactions are read-only (edit and delete rejected with 400 `detail`). The contract only says archived books "reject new entries" and are "read-only"; extending this to edit/delete follows the Books rule "Archived books remain reportable and are read-only".
+  3. Moving a transaction (via `book_id`) into a MONTHLY book requires a date inside that month.
+  4. A `description` of `""` is stored as `""`; omitted → `null`.
+- No contract conflict was found; `docs/api/openapi.yaml` was extended (not altered semantically): `TransactionUpdate` schema, concrete `Transaction` response schema, response codes, behaviour notes. YAML syntax is unvalidated (PyYAML absent from venv).
+- Verification: 355 tests pass (`python -W error::DeprecationWarning -m pytest -q`, SQLite); `manage.py check` 0 issues; `makemigrations --check --dry-run` no changes. **PostgreSQL not exercised** — partial indexes, `select_for_update(of=("self",))` and true concurrency are untested there (SQLite ignores row locks). Recommend running the suite against PostgreSQL before deployment.
+- Known gaps / follow-ups: no concurrency test for simultaneous update/delete (needs PostgreSQL); `seed_defaults` command still has no automated tests (carried over from BE-004).
+
+### BE-005 file inventory
+New: `khaata/apps/transactions/migrations/0002_transaction.py`, `test_transactions_services.py`, `test_transactions_api.py`.
+Modified: `khaata/apps/transactions/{models,services,serializers,views,urls,admin}.py`, `khaata/api_urls.py`, `docs/api/openapi.yaml`, `docs/development/{IMPLEMENTATION_BACKLOG,PROJECT_STATUS,HANDOFF}.md`, `CHANGELOG.md`.
 
 ### BE-004 summary (post-review)
 - New app `khaata.apps.transactions` (registered in `INSTALLED_APPS`) with `Category` and `PaymentMethod` models and migration `0001_initial`. The `Transaction` model is NOT included (BE-005); future FKs from Transaction/BudgetAllocation must use `on_delete=PROTECT`.
@@ -36,9 +54,9 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-After user review and merge of BE-004: `BE-005` — Transactions (Decimal amounts, soft delete, filters, pagination; validate category type and owner/payment-method owner).
+After user review and merge of BE-005: `BE-006` — Budgets and allocations (or `BOOT-002` CI baseline). Budget/report code must use `Transaction.objects` (active-only) and `book__owner` scoping.
 
-**Decision recorded for BE-005 (inactive-reference rule):**
+**Decision recorded for BE-005 (inactive-reference rule) — implemented:**
 New transactions MUST reject an inactive category or payment method. Deactivated references on existing (historical) transactions are preserved intact. Reactivation restores the option for new entries. Implementation requirement: the `create_transaction` and `update_transaction` service functions must check `category.is_active` and `payment_method.is_active` and raise a validation error if either is False. No database schema change is needed — this is a service-layer check. Record in ADR if behaviour is changed from this recommendation after review.
 
 Refer to `docs/api/API_CONTRACT.md` section 5 and `docs/architecture/DATABASE_DESIGN.md`.

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### BE-005 — Transactions
+- Added `Transaction` model to `khaata.apps.transactions` (UUID PK; `book` FK PROTECT; nullable `category`/`payment_method` FKs PROTECT; `type`; `amount` `Decimal(14,2)`; `transaction_date`; `description` (500); `created_at`/`updated_at`; `deleted_at`) and migration `0002_transaction`.
+- Database constraints/indexes: `transaction_amount_positive` (amount > 0), `transaction_type_valid`; partial indexes `(book, transaction_date)` and `(transaction_date)` `WHERE deleted_at IS NULL`. `Transaction.objects` is the active-only manager; `Transaction.all_objects` is the unrestricted audit/admin manager.
+- Service layer (`create_transaction`, `update_transaction`, `soft_delete_transaction`): atomic, row-locked; owner scoping through `book.owner`; category type must match transaction type; newly selected inactive category/payment method rejected (existing historical references are kept); archived books reject new/moved/edited/deleted transactions; MONTHLY books require a date inside their month; changing the date of a monthly-book transaction to another month atomically moves it to that month's book (ensured on demand); soft delete is idempotent.
+- Endpoints: `GET/POST /api/v1/transactions/`, `GET/PATCH/DELETE /api/v1/transactions/{id}/` with filters `book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search`, `ordering` and page-number pagination (default order `-transaction_date,-created_at`, deterministic `-id` tie-break). Malformed filters → 400. Cross-user/deleted ids → 404. Writes are CSRF-enforced.
+- Admin registration (includes soft-deleted rows).
+- `docs/api/openapi.yaml`: added `TransactionUpdate` schema, concrete `Transaction` response schema (nested `category`/`payment_method`), response codes and behaviour notes.
+- 138 new tests; full suite 355 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
+
 ### BE-004 — Categories and payment methods (post-review)
 - Added `khaata.apps.transactions` app with `Category` and `PaymentMethod` models (UUID PKs, owner FK, `is_active`, timestamps; categories also `type` INCOME/EXPENSE and `is_default`) and migration `0001_initial`.
 - Database constraints: case-insensitive unique `(owner, type, lower(name))` for categories, case-insensitive unique `(owner, lower(name))` for payment methods, and a category type check constraint.

@@ -292,7 +292,10 @@ paths:
           schema: { type: string }
         - in: query
           name: ordering
-          schema: { type: string }
+          description: Default is `-transaction_date,-created_at`; unknown values fall back to the default. Ties are broken by `-created_at`, `-id`.
+          schema:
+            type: string
+            enum: [transaction_date, -transaction_date, amount, -amount, created_at, -created_at]
         - in: query
           name: page
           schema: { type: integer, minimum: 1 }
@@ -302,8 +305,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PaginatedTransactions" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     post:
       summary: Create transaction
+      description: >-
+        Amount must be greater than zero with at most 2 decimal places. Category type must match the
+        transaction type. Referenced book, category and payment method must belong to the user; the
+        category and payment method must be active; the book must not be archived; a MONTHLY book only
+        accepts dates inside its month.
       requestBody:
         required: true
         content:
@@ -317,29 +327,49 @@ paths:
               schema: { $ref: "#/components/schemas/Transaction" }
         "400":
           $ref: "#/components/responses/ValidationError"
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /transactions/{id}/:
     parameters:
       - $ref: "#/components/parameters/UUID"
     get:
       summary: Retrieve transaction
+      description: Soft-deleted transactions return 404.
       responses:
-        "200": { description: Transaction }
+        "200":
+          description: Transaction
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       summary: Edit transaction
+      description: >-
+        Partial update; invariants are validated after applying the changes. Inactive categories and
+        payment methods are rejected only when newly selected; an unchanged existing reference is kept.
+        Changing the date of a transaction in a MONTHLY book to another month atomically moves it to
+        that month's book (created on demand). Transactions in archived books are read-only.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/TransactionWrite" }
+            schema: { $ref: "#/components/schemas/TransactionUpdate" }
       responses:
-        "200": { description: Transaction updated }
+        "200":
+          description: Transaction updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Transaction" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       summary: Soft-delete transaction
+      description: Idempotent; repeating the call on an already-deleted transaction returns 204. Transactions in archived books cannot be deleted (400).
       responses:
         "204": { description: Soft-deleted }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
   /budgets/:
     get:
@@ -531,14 +561,42 @@ components:
         category_id: { type: string, format: uuid, nullable: true }
         payment_method_id: { type: string, format: uuid, nullable: true }
         description: { type: string, maxLength: 500 }
+    TransactionUpdate:
+      type: object
+      description: Partial update; all fields optional. `book_id`, `type`, `amount` and `transaction_date` cannot be null.
+      properties:
+        book_id: { type: string, format: uuid }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        amount: { $ref: "#/components/schemas/Money" }
+        transaction_date: { type: string, format: date }
+        category_id: { type: string, format: uuid, nullable: true }
+        payment_method_id: { type: string, format: uuid, nullable: true }
+        description: { type: string, maxLength: 500, nullable: true }
     Transaction:
-      allOf:
-        - $ref: "#/components/schemas/TransactionWrite"
-        - type: object
+      type: object
+      required: [id, book_id, type, amount, transaction_date, category, payment_method, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        book_id: { type: string, format: uuid }
+        type: { type: string, enum: [INCOME, EXPENSE] }
+        amount: { $ref: "#/components/schemas/Money" }
+        transaction_date: { type: string, format: date }
+        category:
+          nullable: true
+          type: object
           properties:
             id: { type: string, format: uuid }
-            created_at: { type: string, format: date-time }
-            updated_at: { type: string, format: date-time }
+            name: { type: string }
+            type: { type: string, enum: [INCOME, EXPENSE] }
+        payment_method:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        description: { type: string, nullable: true, maxLength: 500 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     BudgetWrite:
       type: object
       required: [scope, total_limit]
