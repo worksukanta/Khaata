@@ -1,0 +1,40 @@
+/*
+ * Khaata global styles.
+ * Tailwind base, components, and utilities are injected here.
+ * App-specific globals are kept minimal — prefer Tailwind utilities in components.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Font smoothing for sharper text on high-DPI screens */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Apply the brand font stack globally */
+  body {
+    font-family: Inter, system-ui, sans-serif;
+    background-color: #F8FAFC; /* background token */
+    color: #0F172A;            /* text-primary token */
+  }
+
+  /* Tabular numerals for financial amounts */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Respect reduced-motion preference (DESIGN_SYSTEM.md §7) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

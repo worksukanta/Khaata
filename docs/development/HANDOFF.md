@@ -1,10 +1,182 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-018-BOOT-002` (follows `KH-CP-017-BE-009`)
+`KH-CP-019-FE-001` (follows `KH-CP-018-BOOT-002`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), and BOOT-002 (CI baseline) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All four implementations are complete; none are merged.** Awaiting user review/merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), BOOT-002 (CI baseline), and FE-001 (Frontend foundation) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All five implementations are complete; none are merged.** Awaiting user review/merge.
+
+### FE-001 summary
+
+#### What was built
+- `frontend/` React 19 + TypeScript 5.8 (strict) + Vite 6 + Tailwind CSS 3.4 + React Router 7 + Axios 1.9 + Vitest 5 application.
+- No backend files changed; no Python dependencies added; no migrations.
+
+#### Architecture
+
+```
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── router/index.tsx        — createBrowserRouter with all 11 routes (UX-01–UX-11)
+│   │   └── providers/index.tsx     — RouterProvider wrapper (AuthProvider TBD in FE-002)
+│   ├── assets/
+│   │   └── index.css               — Tailwind directives + global base styles
+│   ├── components/
+│   │   └── layout/
+│   │       ├── AppShell.tsx         — Root layout: Sidebar (lg+) + BottomNav (mobile) + <Outlet/>
+│   │       ├── BottomNav.tsx        — 5-destination mobile nav, prominent Add button
+│   │       ├── Sidebar.tsx          — 240px desktop sidebar
+│   │       ├── NotFoundPage.tsx     — 404 page
+│   │       └── PlaceholderPage.tsx  — Temporary placeholder for not-yet-implemented screens
+│   ├── features/
+│   │   └── home/
+│   │       └── HomePage.tsx         — UX-03 shell (FE-001 scope only; full dashboard is FE-005)
+│   ├── services/
+│   │   └── api/
+│   │       ├── client.ts           — Axios instance; withCredentials; CSRF interceptor; error normaliser
+│   │       ├── auth.ts             — bootstrapCsrf(), login(), logout(), getMe()
+│   │       └── index.ts            — barrel re-export
+│   ├── test/
+│   │   ├── setup.ts                — Vitest setup: @testing-library/jest-dom/vitest
+│   │   ├── types.d.ts              — /// <reference types="@testing-library/jest-dom/vitest" />
+│   │   ├── smoke.test.tsx          — 4 smoke tests (AppShell, routing, 404, placeholder)
+│   │   └── client.test.ts          — 2 unit tests (getCsrfToken cookie helpers)
+│   ├── types/
+│   │   ├── index.ts                — User, Book, Transaction, Budget domain types
+│   │   └── css.d.ts                — declare module '*.css'
+│   └── main.tsx                    — createRoot entry point
+├── public/
+├── .env.example                    — VITE_API_BASE_URL documentation
+├── eslint.config.mjs               — ESLint flat config (typescript-eslint + react-hooks)
+├── index.html
+├── package.json                    — npm scripts: dev, build, lint, typecheck, test
+├── postcss.config.js
+├── tailwind.config.js              — Khaata design tokens
+├── tsconfig.json                   — strict, noEmit, vite/client + vitest/globals types
+├── tsconfig.node.json              — composite for vite.config.ts / vitest.config.ts
+├── vite.config.ts                  — @vitejs/plugin-react + /api proxy + source maps
+└── vitest.config.ts                — jsdom env, setupFiles, path aliases
+```
+
+#### API client and CSRF strategy
+1. `GET /api/v1/auth/csrf/` sets the `csrftoken` cookie (called via `bootstrapCsrf()`).
+2. Axios request interceptor reads `getCookie('csrftoken')` and attaches `X-CSRFToken` header on POST/PUT/PATCH/DELETE.
+3. After a successful `login()`, `bootstrapCsrf()` is called again to pick up the rotated token.
+4. `withCredentials: true` on every request so the session cookie travels with API calls.
+5. Session token never stored in `localStorage`.
+6. Response interceptor wraps all non-envelope errors into the `ApiError` shape.
+
+#### Design tokens established
+| Token | Value | Tailwind class |
+|---|---|---|
+| brand-700 | #047857 | `text-brand-700`, `bg-brand-700` |
+| brand-600 | #059669 | `bg-brand-600` |
+| brand-50 | #ECFDF5 | `bg-brand-50` |
+| surface | #FFFFFF | `bg-surface` |
+| background | #F8FAFC | `bg-background` |
+| text-primary | #0F172A | `text-text-primary` |
+| text-secondary | #475569 | `text-text-secondary` |
+| border | #E2E8F0 | `border-border` |
+| success-text | #047857 | `text-success-text` |
+| danger-text | #B91C1C | `text-danger-text` |
+| danger-bg | #FEF2F2 | `bg-danger-bg` |
+| warning-text | #92400E | `text-warning-text` |
+| warning-bg | #FFFBEB | `bg-warning-bg` |
+
+#### Dependencies introduced
+| Package | Role | Reason |
+|---|---|---|
+| `react` 19 | UI framework | Approved stack |
+| `react-dom` 19 | DOM renderer | Required by React |
+| `react-router-dom` 7 | Client-side routing | Approved stack |
+| `axios` 1.9 | HTTP client | Approved (API contract requires CSRF headers + credentials) |
+| `vite` 6 | Build tool | Approved stack |
+| `@vitejs/plugin-react` 4 | React fast-refresh | Required by Vite + React |
+| `typescript` 5.8 | Type checking | Approved stack |
+| `tailwindcss` 3.4 | Utility CSS | Approved stack |
+| `autoprefixer`, `postcss` | CSS processing | Required by Tailwind |
+| `vitest` 5 | Test runner | Replaces Jest; native Vite integration |
+| `@testing-library/react` 16 | Component testing | Industry standard |
+| `@testing-library/jest-dom` 6 | DOM matchers | Required with Testing Library |
+| `@testing-library/user-event` 14 | User interaction | Available for FE-002+ tests |
+| `jsdom` 26 | Browser env for tests | Required by Vitest jsdom mode |
+| `eslint` 9 + `typescript-eslint` 8 | Linting | Approved toolchain |
+| `eslint-plugin-react-hooks` 5 | Hook lint rules | React best practices |
+| `eslint-plugin-react-refresh` 0.4 | HMR lint | Vite fast-refresh safety |
+| `globals` 16 | ESLint globals | Required by flat config |
+| `@types/node` | Node types | Needed by vite.config.ts / vitest.config.ts |
+| `@vitest/coverage-v8` 5 | Coverage | Optional; used in CI coverage step if added later |
+
+No Redux, Zustand, or other state libraries added (not required in FE-001; tracked per AGENTS.md §10).
+
+#### CI changes
+- **New file:** `.github/workflows/frontend-ci.yml` — single-job GitHub Actions workflow.
+  - Triggers on push/PR to `main` (path filter: `frontend/**` or the workflow file).
+  - Node 22 matrix (single version; Node LTS).
+  - Steps: `npm ci` → `npm run typecheck` → `npm run lint` → `npm test` → `npm run build`.
+  - Third-party actions: `actions/checkout@v4`, `actions/setup-node@v4`, `actions/cache` via `setup-node` `cache: npm`.
+  - Permissions: `contents: read`.
+  - **Does not modify** `backend-ci.yml`; both workflows run independently.
+- **Manual action required (owner):** Add `Frontend (Node 22)` as a required status check in GitHub branch protection settings for `main`.
+
+#### Local verification
+- `tsc --noEmit` → 0 errors
+- `eslint .` → 0 warnings / errors
+- `vitest run` → **6 passed** (4 smoke, 2 unit; jsdom)
+- `vite build` → `dist/index.html` 0.47 kB · `dist/assets/index-*.css` 9.73 kB (gzip 2.72 kB) · `dist/assets/index-*.js` 328.58 kB (gzip 103.55 kB) — built in ~5 s
+
+#### Known issues / gaps
+1. **Dev-dependency vulnerabilities (moderate, 12):** `minimatch < 11.0.1` used transitively by `typescript-eslint` and `eslint`; upstream has no fix for these specific transitive deps. All are dev-only tools that are not included in the production bundle. Acceptable per the security policy 90-day remediation window. Monitor for upstream fixes.
+2. **No functional auth UI:** Login, register, and logout screens are placeholder pages; FE-002 implements them.
+3. **No route protection:** Unauthenticated access to protected routes is not enforced; FE-002 adds an AuthProvider and `PrivateRoute` guard.
+4. **No TanStack Query:** UI specification §8 mentions TanStack Query for server state; not added in FE-001 (no API calls yet). Add in FE-002 when live API data is needed.
+
+#### FE-001 file inventory
+New files:
+- `.github/workflows/frontend-ci.yml`
+- `frontend/index.html`
+- `frontend/package.json`
+- `frontend/tsconfig.json`
+- `frontend/tsconfig.node.json`
+- `frontend/vite.config.ts`
+- `frontend/vitest.config.ts`
+- `frontend/tailwind.config.js`
+- `frontend/postcss.config.js`
+- `frontend/eslint.config.mjs`
+- `frontend/.env.example`
+- `frontend/src/main.tsx`
+- `frontend/src/App.tsx`
+- `frontend/src/assets/index.css`
+- `frontend/src/app/router/index.tsx`
+- `frontend/src/app/providers/index.tsx`
+- `frontend/src/components/layout/AppShell.tsx`
+- `frontend/src/components/layout/BottomNav.tsx`
+- `frontend/src/components/layout/Sidebar.tsx`
+- `frontend/src/components/layout/NotFoundPage.tsx`
+- `frontend/src/components/layout/PlaceholderPage.tsx`
+- `frontend/src/features/home/HomePage.tsx`
+- `frontend/src/services/api/client.ts`
+- `frontend/src/services/api/auth.ts`
+- `frontend/src/services/api/index.ts`
+- `frontend/src/types/index.ts`
+- `frontend/src/types/css.d.ts`
+- `frontend/src/test/setup.ts`
+- `frontend/src/test/types.d.ts`
+- `frontend/src/test/smoke.test.tsx`
+- `frontend/src/test/client.test.ts`
+
+Auto-generated (not to commit):
+- `frontend/package-lock.json` (generated by `npm install`)
+- `frontend/node_modules/` (excluded by root `.gitignore`)
+- `frontend/dist/` (excluded by root `.gitignore`)
+
+Updated documentation:
+- `docs/development/IMPLEMENTATION_BACKLOG.md` (FE-001 status → IN_PROGRESS)
+- `docs/development/PROJECT_STATUS.md` (phase, next milestone, verification)
+- `docs/development/HANDOFF.md` (checkpoint → KH-CP-019-FE-001)
+- `CHANGELOG.md` (FE-001 entry)
+
 
 ### BOOT-002 summary
 - **New file:** `.github/workflows/backend-ci.yml` — two-job GitHub Actions workflow triggered on push/PR to `main` (path filter: `backend/**` or the workflow file itself).
@@ -223,7 +395,7 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-After user review and merge of BE-007 and BE-008: `BOOT-002` (CI baseline) or `FE-001` (React/Vite/TypeScript setup). There are no remaining backend tasks blocking the frontend milestone.
+`FE-002` — Auth screens and API client (login, register, logout, route protection, `PrivateRoute` guard, `AuthProvider`, TanStack Query integration). Only after FE-001 is reviewed and merged by the user.
 
 **Decision recorded for BE-005 (inactive-reference rule) — implemented:**
 New transactions MUST reject an inactive category or payment method. Deactivated references on existing (historical) transactions are preserved intact. Reactivation restores the option for new entries. Implementation requirement: the `create_transaction` and `update_transaction` service functions must check `category.is_active` and `payment_method.is_active` and raise a validation error if either is False. No database schema change is needed — this is a service-layer check. Record in ADR if behaviour is changed from this recommendation after review.

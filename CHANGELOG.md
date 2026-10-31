@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### FE-001 — Frontend foundation (React + TypeScript + Vite)
+- Created `frontend/` React/TypeScript/Vite application.
+- **Stack:** React 19, TypeScript 5.8 (strict mode), Vite 6, Tailwind CSS 3.4, React Router 7, Axios 1.9, Vitest 5 + Testing Library.
+- **Architecture:** `src/app/` (router, providers), `src/assets/` (global CSS), `src/components/layout/` (AppShell, BottomNav, Sidebar, NotFoundPage, PlaceholderPage), `src/features/home/`, `src/services/api/` (typed Axios client + auth service), `src/types/` (domain types), `src/test/` (smoke tests + client unit tests).
+- **API client** (`src/services/api/client.ts`): `withCredentials: true` for session cookie; CSRF token read from `csrftoken` cookie and attached as `X-CSRFToken` header on state-changing requests; login re-fetches CSRF after token rotation; unified error normalisation to `ApiError` shape; base URL from `VITE_API_BASE_URL` env var.
+- **CSRF bootstrap** (`src/services/api/auth.ts`): `bootstrapCsrf()` calls `GET /api/v1/auth/csrf/`; `login()` calls `bootstrapCsrf()` afterward to pick up rotated token.
+- **Design tokens:** Tailwind theme extended with Khaata brand palette (emerald brand-700 #047857 / brand-600 #059669 / brand-50 #ECFDF5), semantic colors (surface, background, text-primary, text-secondary, danger, warning, success), 4px spacing scale, Inter font stack, card/input border radii, 44px minimum touch targets.
+- **Responsive shell:** Mobile bottom nav (5 destinations, prominent Add button), desktop sidebar (240px, max-content 1200px), `safe-area-inset-bottom` support, `prefers-reduced-motion` support.
+- **Routes wired (all UX-01 through UX-11):** `/`, `/login`, `/register`, `/books`, `/books/:id`, `/transactions/new`, `/transactions/:id/edit`, `/budgets`, `/budgets/:id`, `/reports`, `/settings`. Feature screens render placeholder pages (FE-002 onward).
+- **Testing:** Vitest 5 + jsdom; `@testing-library/react`; 6 tests pass (4 smoke + 2 client unit).
+- **CI:** Added `.github/workflows/frontend-ci.yml` (Node 22 matrix; steps: `npm ci → typecheck → lint → test → build`; path-filtered to `frontend/**`). Does not affect the backend CI workflow.
+- **Verification:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings; `vitest run` → 6/6 passed; `vite build` → 328 kB JS + 9.7 kB CSS; no secrets committed.
+- **Known issues:** 12 moderate dev-dependency vulnerabilities in ESLint/minimatch (no fix available upstream; dev-only tools not shipped to production; within 90-day remediation window).
+
 ### BOOT-002 — CI baseline
 - Created `.github/workflows/backend-ci.yml`: two-job GitHub Actions CI workflow.
   - **`test-sqlite`** (matrix: Python 3.12 / 3.13): checkout → setup Python → cache pip → install `requirements-dev.txt` → `manage.py check --settings=khaata.settings.test` → `makemigrations --check --dry-run` → `python -W error::DeprecationWarning -m pytest -q` → `git diff --check`. No external services.

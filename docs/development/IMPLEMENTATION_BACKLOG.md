@@ -119,9 +119,12 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 ## Milestone M2 — Frontend foundation
 
 ### FE-001 — React/Vite/TypeScript setup
-- Status: TODO
-- Add routing, linting, formatting, design tokens, responsive app shell.
-- Acceptance: build/lint/typecheck work; navigation matches UI/UX spec.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Created `frontend/` with React 19 + TypeScript 5.8 (strict) + Vite 6 + Tailwind CSS 3.4 + React Router 7 + Axios 1.9 + Vitest 5.
+- Architecture: `src/app/` (router, providers), `src/assets/` (global CSS), `src/components/layout/` (AppShell, BottomNav, Sidebar, NotFoundPage, PlaceholderPage), `src/features/home/`, `src/services/api/` (typed Axios client + auth service stubs), `src/types/` (domain types aligned with API_CONTRACT.md), `src/test/` (smoke + unit tests).
+- Environment: `frontend/.env.example` documents `VITE_API_BASE_URL`; Vite dev server proxies `/api/*` to Django backend.
+- CI: `.github/workflows/frontend-ci.yml` (Node 22; path-filtered to `frontend/**`; steps: typecheck → lint → test → build).
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings; `vitest run` → 6/6 passed; `vite build` → succeeds.
 
 ### FE-002 — Auth screens and API client
 - Status: TODO
