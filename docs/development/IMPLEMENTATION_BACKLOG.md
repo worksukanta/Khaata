@@ -73,7 +73,7 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: ownership, category compatibility, active-only references on write, date/month behavior, totals exclude deleted records.
 
 ### BE-006 — Budgets and allocations
-- Status: IN_PROGRESS (implementation complete in the working tree on `feat/BE-006-budgets-allocations`; uncommitted — the user handles Git; awaiting user review and merge. Implementation complete ≠ merged.)
+- Status: DONE (committed by the user as `153adef`, merged to `main`).
 - Created `khaata.apps.budgets` (per `SYSTEM_ARCHITECTURE.md` section 4) with `Budget` and `BudgetAllocation` models, migration `0001_initial`, services, serializers, views, URLs, admin. Registered in `INSTALLED_APPS`; routed at `/api/v1/budgets/`.
 - Database constraints: `budget_scope_valid`, `budget_scope_fields_consistency` (MONTHLY_OVERALL = year + month 1–12 + no book; EVENT = book + no year/month), `budget_total_limit_non_negative`, partial unique `unique_monthly_budget_per_owner_year_month` (`WHERE scope='MONTHLY_OVERALL'`), partial unique `unique_event_budget_per_book` (`WHERE scope='EVENT'`); allocations: `unique_budget_allocation_budget_category`, `budget_allocation_amount_non_negative`. `Budget.book` and `BudgetAllocation.category` are `PROTECT`; allocations `CASCADE` with their budget; `Budget.owner` `CASCADE`.
 - Endpoints: `GET/POST /api/v1/budgets/` (filters `scope`, `year`, `month`, `book_id`; fixed newest-period-first order), `GET/PATCH /api/v1/budgets/{id}/`, `PUT /api/v1/budgets/{id}/allocations/`. No DELETE (not in contract).
@@ -82,10 +82,20 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Monthly/event budgets, atomic allocation replacement, derived utilization.
 - Acceptance: allocation cap under concurrency (service-level lock implemented; true concurrency needs PostgreSQL to verify); zero-budget and overspending cases tested.
 
-### BE-007 — Reports and CSV export
-- Status: TODO
-- Combined monthly dashboard, book report, budget utilization, safe CSV.
-- Acceptance: event expenses count once in monthly totals; CSV formula injection mitigated.
+### BE-007 — Dashboard and reports
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge. Implementation complete ≠ merged.)
+- Scope split: the original "Reports and CSV export" item is split. BE-007 = the three report endpoints; CSV export moved to **BE-008** (not started).
+- Created `khaata.apps.reports` (no models, no migrations, no admin). Registered in `INSTALLED_APPS`; routed at `/api/v1/reports/`.
+- Endpoints (read-only GET, session auth required): `/reports/monthly/?year=&month=`, `/reports/books/{id}/`, `/reports/budget-utilization/?year=&month=`. `year` 2000–2200 and `month` 1–12 are validated (400 `validation_error` otherwise).
+- Services (`reports/services.py`): `monthly_report`, `book_report`, `budget_utilization_report`, `budget_summary`. Database-side aggregation only (`Sum` over `values()`); budget figures reuse BE-006 `calculate_budget_spending` / `classify_utilization` / `BudgetSerializer`. BE-006's private `_month_bounds` was renamed to public `month_bounds` (behaviour unchanged; one call site; covered by the BE-006 suite and new `test_month_bounds`).
+- Behaviour: combined monthly totals count every active transaction of every owned book by `transaction_date`, once; `book_type_breakdown` always has MONTHLY/EVENT/GENERAL; `category_breakdown` is expense-only, `{category_id, category_name, total}`, largest first, uncategorised = `{null, "Uncategorised"}`; monthly `budget` block is `NOT_SET` with null figures when no budget exists; `recent_transactions` = latest 5 (`-transaction_date, -created_at, -id`) via `TransactionSerializer`. Book report adds `closing_balance = opening_balance + income - expense` (`Book.opening_balance` exists) and the event budget for EVENT books only (else `null`). Unknown/cross-user book ids → identical 404.
+- 86 new tests (38 service, 48 API incl. a constant-query-count test); full suite 618 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
+- Acceptance: event expenses count once in monthly totals (tested); cross-user isolation (tested); soft-deleted excluded (tested).
+
+### BE-008 — CSV export
+- Status: TODO (split out of the original BE-007; not started)
+- `GET /exports/transactions.csv` per `API_CONTRACT.md` section 8; same filter semantics as the transaction list; formula-injection escaping; owner-scoped, active rows only.
+- Acceptance: CSV formula injection mitigated; no other users' or soft-deleted rows exported.
 
 ## Milestone M2 — Frontend foundation
 

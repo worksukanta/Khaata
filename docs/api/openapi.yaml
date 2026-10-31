@@ -497,43 +497,61 @@ paths:
   /reports/monthly/:
     get:
       summary: Combined monthly dashboard
+      description: >-
+        Read-only. Aggregates active (non-deleted) transactions of ALL the authenticated user's books
+        (MONTHLY, EVENT and GENERAL, archived or not) whose `transaction_date` falls inside the calendar
+        month. Every transaction is counted exactly once. `book_type_breakdown` always contains all three
+        book types. `category_breakdown` covers expenses only, largest total first. `recent_transactions`
+        holds at most the latest five (`-transaction_date`, `-created_at`, `-id`). The `budget` block
+        summarises the monthly overall budget and has `status: NOT_SET` with null figures when none exists.
       parameters:
-        - in: query
-          name: year
-          required: true
-          schema: { type: integer }
-        - in: query
-          name: month
-          required: true
-          schema: { type: integer, minimum: 1, maximum: 12 }
+        - $ref: "#/components/parameters/ReportYear"
+        - $ref: "#/components/parameters/ReportMonth"
       responses:
         "200":
           description: Combined monthly totals and book-type breakdown
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MonthlyReport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /reports/books/{id}/:
     get:
       summary: Book-scoped report
+      description: >-
+        Read-only. Totals over all active transactions of one owned book (any date; archived books remain
+        reportable). `closing_balance = opening_balance + income_total - expense_total`; opening balances
+        are not income and are never carried over between books. `budget` is the event budget for EVENT
+        books (same shape as `Budget`) and `null` when none exists or for MONTHLY/GENERAL books.
+        Unknown and other users' book ids return an identical 404.
       parameters:
         - $ref: "#/components/parameters/UUID"
       responses:
-        "200": { description: Book report }
+        "200":
+          description: Book report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BookReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
   /reports/budget-utilization/:
     get:
       summary: Monthly budget utilization
+      description: >-
+        Read-only. Returns the requested period and the monthly overall budget with its allocation
+        progress (identical to `GET /budgets/{id}/`), or `budget: null` when no monthly overall budget
+        exists for that month.
       parameters:
-        - in: query
-          name: year
-          required: true
-          schema: { type: integer }
-        - in: query
-          name: month
-          required: true
-          schema: { type: integer, minimum: 1, maximum: 12 }
+        - $ref: "#/components/parameters/ReportYear"
+        - $ref: "#/components/parameters/ReportMonth"
       responses:
-        "200": { description: Budget utilization }
+        "200":
+          description: Budget utilization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BudgetUtilizationReport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /exports/transactions.csv:
     get:
       summary: Export filtered active transactions as CSV
@@ -556,6 +574,16 @@ components:
       name: id
       required: true
       schema: { type: string, format: uuid }
+    ReportYear:
+      in: query
+      name: year
+      required: true
+      schema: { type: integer, minimum: 2000, maximum: 2200 }
+    ReportMonth:
+      in: query
+      name: month
+      required: true
+      schema: { type: integer, minimum: 1, maximum: 12 }
   responses:
     Unauthorized:
       description: Authentication required
@@ -751,40 +779,94 @@ components:
       type: object
       required: [period, currency, income_total, expense_total, net_cash_flow, book_type_breakdown]
       properties:
-        period:
-          type: object
-          required: [year, month]
-          properties:
-            year: { type: integer }
-            month: { type: integer, minimum: 1, maximum: 12 }
+        period: { $ref: "#/components/schemas/ReportPeriod" }
         currency: { type: string, enum: [INR] }
         income_total: { $ref: "#/components/schemas/Money" }
         expense_total: { $ref: "#/components/schemas/Money" }
-        net_cash_flow: { $ref: "#/components/schemas/Money" }
+        net_cash_flow: { $ref: "#/components/schemas/SignedMoney", description: "income_total - expense_total; negative when expenses exceed income" }
         book_type_breakdown:
           type: array
-          items:
-            type: object
-            properties:
-              book_type: { type: string, enum: [MONTHLY, EVENT, GENERAL] }
-              income: { $ref: "#/components/schemas/Money" }
-              expenses: { $ref: "#/components/schemas/Money" }
+          description: Always exactly three rows, in the order MONTHLY, EVENT, GENERAL.
+          minItems: 3
+          maxItems: 3
+          items: { $ref: "#/components/schemas/BookTypeBreakdownItem" }
         category_breakdown:
           type: array
-          items: { type: object }
-        budget:
-          type: object
-          properties:
-            total_limit: { $ref: "#/components/schemas/Money" }
-            spent: { $ref: "#/components/schemas/Money" }
-            remaining: { $ref: "#/components/schemas/Money" }
-            utilization_percent: { $ref: "#/components/schemas/Money" }
-            status:
-              type: string
-              enum: [NOT_SET, ON_TRACK, NEAR_LIMIT, OVER_BUDGET, UNBUDGETED_SPENDING]
+          description: Expense totals per category (income excluded), largest total first; uncategorised expenses form one row.
+          items: { $ref: "#/components/schemas/CategoryBreakdownItem" }
+        budget: { $ref: "#/components/schemas/MonthlyReportBudget" }
         recent_transactions:
           type: array
+          maxItems: 5
           items: { $ref: "#/components/schemas/Transaction" }
+    ReportPeriod:
+      type: object
+      required: [year, month]
+      properties:
+        year: { type: integer, minimum: 2000, maximum: 2200 }
+        month: { type: integer, minimum: 1, maximum: 12 }
+    BookTypeBreakdownItem:
+      type: object
+      required: [book_type, income, expenses]
+      properties:
+        book_type: { type: string, enum: [MONTHLY, EVENT, GENERAL] }
+        income: { $ref: "#/components/schemas/Money" }
+        expenses: { $ref: "#/components/schemas/Money" }
+    CategoryBreakdownItem:
+      type: object
+      required: [category_id, category_name, total]
+      properties:
+        category_id: { type: string, format: uuid, nullable: true, description: "null for uncategorised expenses" }
+        category_name: { type: string, description: 'The category name, or "Uncategorised" when category_id is null' }
+        total: { $ref: "#/components/schemas/Money" }
+    MonthlyReportBudget:
+      type: object
+      description: >-
+        Monthly overall budget summary. When no budget exists every figure is null and `status` is
+        `NOT_SET` (a report-only state that is never produced by the budget endpoints).
+      required: [total_limit, spent, remaining, utilization_percent, status]
+      properties:
+        total_limit: { $ref: "#/components/schemas/Money", nullable: true }
+        spent: { $ref: "#/components/schemas/Money", nullable: true }
+        remaining: { $ref: "#/components/schemas/SignedMoney", nullable: true, description: "total_limit - spent; negative when overspent" }
+        utilization_percent: { type: string, nullable: true, pattern: '^\d{1,12}\.\d{2}$', description: "null when NOT_SET or UNBUDGETED_SPENDING" }
+        status:
+          type: string
+          enum: [NOT_SET, ON_TRACK, NEAR_LIMIT, OVER_BUDGET, UNBUDGETED_SPENDING]
+    BookReport:
+      type: object
+      required: [book, income_total, expense_total, net_cash_flow, closing_balance, category_breakdown, budget]
+      properties:
+        book:
+          type: object
+          required: [id, type, name, is_archived]
+          properties:
+            id: { type: string, format: uuid }
+            type: { type: string, enum: [MONTHLY, EVENT, GENERAL] }
+            name: { type: string }
+            is_archived: { type: boolean }
+        income_total: { $ref: "#/components/schemas/Money" }
+        expense_total: { $ref: "#/components/schemas/Money" }
+        net_cash_flow: { $ref: "#/components/schemas/SignedMoney" }
+        closing_balance: { $ref: "#/components/schemas/SignedMoney", description: "opening_balance + income_total - expense_total (can be negative)" }
+        category_breakdown:
+          type: array
+          items: { $ref: "#/components/schemas/CategoryBreakdownItem" }
+        budget:
+          nullable: true
+          description: Event budget for EVENT books; null when absent and always null for MONTHLY and GENERAL books.
+          allOf:
+            - $ref: "#/components/schemas/Budget"
+    BudgetUtilizationReport:
+      type: object
+      required: [period, budget]
+      properties:
+        period: { $ref: "#/components/schemas/ReportPeriod" }
+        budget:
+          nullable: true
+          description: Monthly overall budget for the period, or null when none exists.
+          allOf:
+            - $ref: "#/components/schemas/Budget"
     ErrorResponse:
       type: object
       required: [error]

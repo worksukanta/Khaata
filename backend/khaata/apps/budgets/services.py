@@ -95,8 +95,8 @@ def classify_utilization(limit: Decimal, spent: Decimal) -> dict:
     return {"remaining": remaining, "utilization_percent": percent, "status": status}
 
 
-def _month_bounds(year: int, month: int) -> tuple[datetime.date, datetime.date]:
-    """Half-open [first_day, first_day_of_next_month) date range."""
+def month_bounds(year: int, month: int) -> tuple[datetime.date, datetime.date]:
+    """Half-open [first_day, first_day_of_next_month) date range (shared with reports)."""
     first = datetime.date(year, month, 1)
     if month == 12:
         return first, datetime.date(year + 1, 1, 1)
@@ -118,7 +118,7 @@ def _budget_expense_queryset(budget: Budget):
         book__owner_id=budget.owner_id, type=TransactionType.EXPENSE
     )
     if budget.scope == BudgetScope.MONTHLY_OVERALL:
-        first, next_first = _month_bounds(budget.year, budget.month)
+        first, next_first = month_bounds(budget.year, budget.month)
         return queryset.filter(transaction_date__gte=first, transaction_date__lt=next_first)
     return queryset.filter(book_id=budget.book_id)
 

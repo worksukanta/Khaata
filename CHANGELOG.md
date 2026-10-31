@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### BE-007 — Dashboard and reports
+- Added `khaata.apps.reports` (no models/migrations/admin) registered in `INSTALLED_APPS` and routed at `/api/v1/reports/`.
+- Endpoints (read-only, authenticated): `GET /api/v1/reports/monthly/?year=&month=`, `GET /api/v1/reports/books/{id}/`, `GET /api/v1/reports/budget-utilization/?year=&month=`. `year` 2000–2200 / `month` 1–12 validated (400 otherwise); unknown and cross-user book ids → identical 404.
+- Monthly dashboard: combined income/expense/net cash flow across all owned books by `transaction_date` (each transaction once; soft-deleted excluded; archived books included); always-three-row `book_type_breakdown`; expense-only `category_breakdown` (`{category_id, category_name, total}`, uncategorised = `null`/`"Uncategorised"`, largest first); `budget` block (`NOT_SET` with null figures when no monthly budget; signed `remaining`); latest five `recent_transactions` in deterministic order.
+- Book report: income/expense/net, `closing_balance = opening_balance + income - expense`, category breakdown, and the event budget (EVENT books only, else `null`). Budget utilization: period plus the existing `BudgetSerializer` output, or `budget: null`.
+- All aggregation is database-side with `Decimal` arithmetic; budget math reuses BE-006 `calculate_budget_spending` / `classify_utilization` / `BudgetSerializer`. BE-006's `_month_bounds` renamed to public `month_bounds` (no behaviour change).
+- `docs/api/openapi.yaml`: documented all three endpoints with concrete `MonthlyReport`, `MonthlyReportBudget` (nullable figures, signed `remaining`, nullable `utilization_percent`), `CategoryBreakdownItem`, `BookTypeBreakdownItem`, `BookReport`, `BudgetUtilizationReport`, `ReportPeriod` schemas, shared `ReportYear`/`ReportMonth` parameters (with range constraints) and 200/400/401/404 responses.
+- Backlog: original "Reports and CSV export" split; CSV export is now BE-008 and was **not** implemented.
+- 86 new tests; full suite 618 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
+
 ### BE-006 — Budgets and allocations (+ final review correction)
 - Added `khaata.apps.budgets` with `Budget` (UUID PK; `owner` CASCADE; `scope` `MONTHLY_OVERALL`/`EVENT`; nullable `book` PROTECT; nullable `year`/`month`; `total_limit` `Decimal(14,2)`; timestamps) and `BudgetAllocation` (UUID PK; `budget` CASCADE; `category` PROTECT; `amount` `Decimal(14,2)`) models, migration `0001_initial`, admin, services, serializers, views and URLs. Registered in `INSTALLED_APPS` and routed at `/api/v1/budgets/`.
 - Database constraints: `budget_scope_valid`, `budget_scope_fields_consistency`, `budget_total_limit_non_negative`, partial unique `unique_monthly_budget_per_owner_year_month` and `unique_event_budget_per_book`, `unique_budget_allocation_budget_category`, `budget_allocation_amount_non_negative`.

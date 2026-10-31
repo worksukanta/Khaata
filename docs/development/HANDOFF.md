@@ -1,12 +1,34 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-014-BE-006-REVIEW`
+`KH-CP-015-BE-007` (follows `KH-CP-014-BE-006-REVIEW`; same sequence, no renaming)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-005 were committed by the user (latest commit `81de3a4`, BE-005). BE-006 (Budgets and allocations) is implemented in the working tree on branch `feat/BE-006-budgets-allocations` (uncommitted; the user handles all Git operations — none were performed by the agent). **Implementation is complete; it is NOT merged.** Awaiting user review/merge. BE-007 has not been started.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports) is implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **Implementation is complete; it is NOT merged.** Awaiting user review/merge. BE-008 (CSV export) has NOT been started.
 
-### BE-006 summary
+### BE-007 summary
+- New app `khaata.apps.reports` (registered in `INSTALLED_APPS`; routed at `/api/v1/reports/`). No models, migrations or admin. No new dependency.
+- Endpoints (read-only GET, `IsAuthenticated`): `/reports/monthly/?year=&month=`, `/reports/books/{id}/`, `/reports/budget-utilization/?year=&month=`. `year` 2000–2200 and `month` 1–12 validated with `ReportPeriodQuerySerializer` (missing/invalid → 400 `validation_error`). Unknown and cross-user book ids → identical 404 (`book_report` does `Book.objects.get(id=, owner=user)`).
+- Services (`reports/services.py`): `monthly_report`, `book_report`, `budget_utilization_report`, `budget_summary(budget|None)`, `get_monthly_budget`, `get_event_budget`. All transaction reads use `Transaction.objects` (active-only) filtered by `book__owner=user`; totals are one grouped `Sum` over `values("book__type", "type")` (no Python-side loading of rows); category breakdown is one grouped `Sum` over `values("category_id", "category__name")` then sorted in Python (total desc, name, id). Month window = `[first, first_of_next)` via `khaata.apps.budgets.services.month_bounds`.
+- Reuse: `calculate_budget_spending`, `classify_utilization` and `BudgetSerializer` (BE-006), `TransactionSerializer` (BE-005). The only BE-006 change is renaming the private `_month_bounds` to public `month_bounds` (one call site; behaviour unchanged; the BE-006 suite still passes).
+- Response details: monthly `budget` block = `{total_limit, spent, remaining, utilization_percent, status}`, all null with `status: "NOT_SET"` when no monthly overall budget exists (report-only state); `remaining` is a signed decimal string; `utilization_percent` is null for `UNBUDGETED_SPENDING`/`NOT_SET`. `book_type_breakdown` is always MONTHLY, EVENT, GENERAL. `category_breakdown` item = `{category_id, category_name, total}`, expense-only, uncategorised = `{null, "Uncategorised"}`. `recent_transactions` = latest 5 by `-transaction_date, -created_at, -id` with `select_related("category", "payment_method")`. Book report = `{book{id,type,name,is_archived}, income_total, expense_total, net_cash_flow, closing_balance, category_breakdown, budget}`; `closing_balance = Book.opening_balance + income - expense` (`opening_balance` exists in the Book model and DATABASE_DESIGN, so no discrepancy); `budget` = full `BudgetSerializer` output for the event budget of an EVENT book, else `null`. Budget utilization = `{period, budget}` with `budget` the `BudgetSerializer` output (identical to `GET /budgets/{id}/`) or `null`.
+- Decisions not spelled out in the contract (**please confirm during review**):
+  1. Book report `income_total`/`expense_total` cover ALL dates of the book (book-scoped, per API_CONTRACT section 9); no period filter exists on the endpoint.
+  2. Book report `budget` is the full BE-006 `Budget` object (with allocations), not the compact monthly summary.
+  3. `category_breakdown` ties are ordered by category name then id so ordering is deterministic.
+  4. The reports app imports `month_bounds` from `khaata.apps.budgets.services` (public rename) rather than creating a separate shared utility module; the dependency direction is reports → budgets → transactions/books, with no cycle.
+  5. GET report endpoints never create books (no `ensure_monthly_book` call); an unknown month simply returns zeroes.
+  6. `API_CONTRACT.md` section 7 was left unchanged (its monthly example is consistent with the implementation); `openapi.yaml` is now the detailed reference for the report shapes. No contract conflict was found.
+- Query behaviour: a constant number of queries for the monthly dashboard regardless of transaction volume (tested with a query-count comparison). Budget serializer cost for book/utilization reports is the BE-006 per-budget cost (2–3 queries).
+- Verification: focused `pytest khaata/apps/reports` → 86 passed (38 service + 48 API); full suite `python -W error::DeprecationWarning -m pytest -q` → 618 passed (SQLite); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes; `git diff --check` → clean. OpenAPI YAML only sanity-checked for tabs/indentation (no YAML parser/validator installed; no dependency added). **PostgreSQL was not exercised**: grouped aggregation, NULL handling in `values()` grouping and index usage are unverified there.
+- Known gaps / follow-ups: CSV export (BE-008) not implemented; PostgreSQL run still pending; no pagination on `category_breakdown` (bounded by the user's category count plus one).
+
+### BE-007 file inventory
+New in `backend/khaata/apps/reports/`: `__init__.py`, `apps.py`, `services.py`, `serializers.py`, `views.py`, `urls.py`, `test_reports_services.py`, `test_reports_api.py`.
+Modified: `backend/khaata/apps/budgets/services.py` (`_month_bounds` → `month_bounds`), `backend/khaata/settings/base.py` (INSTALLED_APPS), `backend/khaata/api_urls.py` (route), `docs/api/openapi.yaml`, `docs/development/{IMPLEMENTATION_BACKLOG,PROJECT_STATUS,HANDOFF}.md`, `CHANGELOG.md`.
+
+### Previous: BE-006 (committed as `153adef`)
+#### BE-006 summary
 - New app `khaata.apps.budgets` (registered in `INSTALLED_APPS`; routed at `/api/v1/budgets/`; per `SYSTEM_ARCHITECTURE.md` section 4 — no new dependency). Models `Budget` and `BudgetAllocation`, migration `0001_initial` (depends on `books.0001`, `transactions.0002`, the user model).
 - `Budget`: UUID PK, `owner` (CASCADE), `scope` (`MONTHLY_OVERALL`/`EVENT`), `book` (nullable, **PROTECT**), `year`/`month` (nullable), `total_limit` `Decimal(14,2)`, timestamps. Constraints: `budget_scope_valid`, `budget_scope_fields_consistency`, `budget_total_limit_non_negative`, partial unique `unique_monthly_budget_per_owner_year_month` (`WHERE scope='MONTHLY_OVERALL'`), partial unique `unique_event_budget_per_book` (`WHERE scope='EVENT'`). `owner`/`book` FK indexes are Django defaults; no speculative extra indexes (DATABASE_DESIGN section 5).
 - `BudgetAllocation`: UUID PK, `budget` (CASCADE), `category` (**PROTECT**), `amount` `Decimal(14,2)`. Constraints: `unique_budget_allocation_budget_category`, `budget_allocation_amount_non_negative`.
@@ -81,7 +103,7 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-After user review and merge of BE-006: `BE-007` — Reports and CSV export (or `BOOT-002` CI baseline). Do not start BE-007 until BE-006 is reviewed. Report/budget code must use `Transaction.objects` (active-only), `book__owner` scoping, and the BE-006 budget helpers.
+After user review and merge of BE-007: `BE-008` — CSV export (`GET /exports/transactions.csv`, API_CONTRACT section 8) or `BOOT-002` CI baseline. Do not start BE-008 until BE-007 is reviewed. Export code must use `Transaction.objects` (active-only), `book__owner` scoping, and the same filter semantics as the transaction list.
 
 **Decision recorded for BE-005 (inactive-reference rule) — implemented:**
 New transactions MUST reject an inactive category or payment method. Deactivated references on existing (historical) transactions are preserved intact. Reactivation restores the option for new entries. Implementation requirement: the `create_transaction` and `update_transaction` service functions must check `category.is_active` and `payment_method.is_active` and raise a validation error if either is False. No database schema change is needed — this is a service-layer check. Record in ADR if behaviour is changed from this recommendation after review.
