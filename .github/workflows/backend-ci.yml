@@ -1,0 +1,143 @@
+# Backend CI — Khaata (BOOT-002)
+#
+# Two jobs run on every push / PR to main:
+#
+#   test-sqlite   — fast gate: system check, migration check, full test suite
+#                   with -W error::DeprecationWarning, whitespace check.
+#                   Matrix: Python 3.12 and 3.13 (both supported by Django 5.2).
+#
+#   test-postgres — PostgreSQL gate: same suite against a real PostgreSQL 16
+#                   service container, verifying partial unique indexes,
+#                   database constraints, select_for_update, and aggregation.
+#                   Runs on Python 3.13 only (one representative version).
+#
+# No secrets are logged. Permissions are read-only except for checkout.
+# Third-party actions are pinned to their latest stable tag.
+
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: SQLite — fast check on all supported Python versions
+  # ---------------------------------------------------------------------------
+  test-sqlite:
+    name: "Test (SQLite) — Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('backend/requirements-dev.txt', 'backend/requirements.txt') }}
+          restore-keys: |
+            pip-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Django system check (test settings)
+        run: python manage.py check --settings=khaata.settings.test
+
+      - name: Migration consistency check
+        run: python manage.py makemigrations --check --dry-run --settings=khaata.settings.test
+
+      - name: Run test suite (SQLite, deprecation warnings as errors)
+        run: python -W error::DeprecationWarning -m pytest -q
+
+      - name: Whitespace check
+        run: git diff --check
+
+  # ---------------------------------------------------------------------------
+  # Job 2: PostgreSQL — full suite against a real PostgreSQL 16 service
+  # ---------------------------------------------------------------------------
+  test-postgres:
+    name: "Test (PostgreSQL 16) — Python 3.13"
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: khaata_ci
+          POSTGRES_USER: khaata_ci
+          POSTGRES_PASSWORD: khaata_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U khaata_ci -d khaata_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DJANGO_SECRET_KEY: ci-only-secret-key-not-used-in-production
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_NAME: khaata_ci
+      DB_USER: khaata_ci
+      DB_PASSWORD: khaata_ci
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-3.13-pg-${{ hashFiles('backend/requirements-dev.txt', 'backend/requirements.txt') }}
+          restore-keys: |
+            pip-3.13-pg-
+            pip-3.13-
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Django system check (PostgreSQL settings)
+        run: python manage.py check --settings=khaata.settings.ci_postgres
+
+      - name: Apply migrations to PostgreSQL
+        run: python manage.py migrate --settings=khaata.settings.ci_postgres
+
+      - name: Run test suite (PostgreSQL, deprecation warnings as errors)
+        env:
+          DJANGO_SETTINGS_MODULE: khaata.settings.ci_postgres
+        run: python -W error::DeprecationWarning -m pytest -q --ds=khaata.settings.ci_postgres

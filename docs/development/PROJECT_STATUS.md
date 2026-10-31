@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-31
-**Current phase:** BE-009 (Backend integration & hardening) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BE-007 (Dashboard and reports) and BE-008 (CSV export) are also implemented but not yet merged.
+**Current phase:** BOOT-002 (CI baseline) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), and BE-009 (Backend integration & hardening) are also implemented but not yet merged.
 
 ## Approved baselines
 
@@ -23,11 +23,13 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BE-007, BE-008 and BE-009 are all implemented (pending user review/merge). Next: `BOOT-002` (CI baseline) or `FE-001` (React/Vite/TypeScript setup), only after BE-007, BE-008 and BE-009 are reviewed and merged.
+Step 5 — vertical-slice implementation continues. BE-007, BE-008, BE-009 and BOOT-002 are all implemented (pending user review/merge). Next: `FE-001` (React/Vite/TypeScript setup), only after the above are reviewed and merged. **Manual action required**: enable branch protection on `main` in the GitHub repository settings to make the CI jobs required status checks.
 
 ## Last known verification
 
-BE-009: Django 5.2.18 + DRF 3.18.3; focused `pytest tests/test_integration.py` → 14 passed (all new integration tests); full suite `python -W error::DeprecationWarning -m pytest -q` → 679 passed (665 pre-existing + 14 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
+BOOT-002: CI workflow created; local validation: `ci_postgres.py` settings load correctly (PostgreSQL engine confirmed); `manage.py check --settings=khaata.settings.ci_postgres` → 0 issues; full SQLite suite `python -W error::DeprecationWarning -m pytest -q` → 679 passed; `git diff --check` → clean. **PostgreSQL CI run will only execute on GitHub Actions** (no local PostgreSQL instance available in this environment). The full PostgreSQL suite is expected to pass: all partial indexes, constraints, `select_for_update` behaviour, and grouped aggregation queries are exercised by the existing 679-test suite on PostgreSQL.
+
+Previous (BE-009): Django 5.2.18 + DRF 3.18.3; focused `pytest tests/test_integration.py` → 14 passed (all new integration tests); full suite `python -W error::DeprecationWarning -m pytest -q` → 679 passed (665 pre-existing + 14 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
 
 Previous (BE-008): Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/exports` → 47 passed; full suite `.venv/Scripts/python -W error::DeprecationWarning -m pytest -q` → 665 passed (618 pre-existing + 47 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
 

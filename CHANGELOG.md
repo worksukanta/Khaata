@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### BOOT-002 — CI baseline
+- Created `.github/workflows/backend-ci.yml`: two-job GitHub Actions CI workflow.
+  - **`test-sqlite`** (matrix: Python 3.12 / 3.13): checkout → setup Python → cache pip → install `requirements-dev.txt` → `manage.py check --settings=khaata.settings.test` → `makemigrations --check --dry-run` → `python -W error::DeprecationWarning -m pytest -q` → `git diff --check`. No external services.
+  - **`test-postgres`** (Python 3.13, PostgreSQL 16 service container): checkout → setup Python → cache pip → install `requirements-dev.txt` → `manage.py check --settings=khaata.settings.ci_postgres` → `migrate` → `python -W error::DeprecationWarning -m pytest -q --ds=khaata.settings.ci_postgres`. Exercises partial unique indexes, `select_for_update`, aggregation, and all database constraints against a real PostgreSQL instance.
+- Triggers on push and PR to `main` (path filter: `backend/**` or the workflow file).
+- Created `backend/khaata/settings/ci_postgres.py`: PostgreSQL settings for the CI service container; reads `DJANGO_SECRET_KEY`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` from environment variables; no `python-decouple`; no hardcoded secrets.
+- No model, migration, admin, or business-logic changes.
+- Third-party actions pinned to stable tags (`checkout@v4`, `setup-python@v5`, `cache@v4`). Permissions: `contents: read`.
+- **Manual action required (owner):** Enable branch protection on `main` in GitHub repository settings; add `Test (SQLite) — Python 3.12`, `Test (SQLite) — Python 3.13`, and `Test (PostgreSQL 16) — Python 3.13` as required status checks.
+- Local verification: `ci_postgres.py` loads correctly, `manage.py check` → 0 issues, full SQLite suite → 679 passed, `git diff --check` → clean. PostgreSQL CI run executes only on GitHub Actions (no local PostgreSQL available).
+
 ### BE-009 — Backend integration & hardening
 - Added `backend/tests/test_integration.py` with 14 cross-module integration tests covering: registration seeding; event-expense dual-budget counting; income excluded from budget spending; soft-delete removes from list/detail/reports/budget/CSV simultaneously; date-based book reassignment reflected in monthly reports; archived-book transactions remain in reports and budget spending; opening balance excluded from income (closing_balance formula); budget overspend never blocks a write; monthly report counts each transaction exactly once; budget-utilization matches direct budget detail; cross-user isolation across all endpoints; error envelope consistency; historical inactive-category reference preserved; CSV/list consistency with formula-injection escaping.
 - Fixed OpenAPI documentation mismatch: `GET /books/` was missing the `ordering` query parameter (`name | -name | created_at | -created_at`) documented in `API_CONTRACT.md` section 3. Added to `docs/api/openapi.yaml`.

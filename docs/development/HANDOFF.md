@@ -1,10 +1,66 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-017-BE-009` (follows `KH-CP-016-BE-008`)
+`KH-CP-018-BOOT-002` (follows `KH-CP-017-BE-009`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export) and BE-009 (Backend integration & hardening) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All three implementations are complete; none are merged.** Awaiting user review/merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), and BOOT-002 (CI baseline) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All four implementations are complete; none are merged.** Awaiting user review/merge.
+
+### BOOT-002 summary
+- **New file:** `.github/workflows/backend-ci.yml` — two-job GitHub Actions workflow triggered on push/PR to `main` (path filter: `backend/**` or the workflow file itself).
+- **New file:** `backend/khaata/settings/ci_postgres.py` — PostgreSQL settings for the CI service container; reads credentials from environment variables; no hardcoded secrets.
+- **No models, migrations, admin, business logic, or dependency changes.**
+
+#### Workflow jobs
+
+| Job | Python | DB | Steps |
+|-----|--------|----|-------|
+| `test-sqlite` (matrix) | 3.12, 3.13 | SQLite in-memory | checkout → setup-python → cache pip → install deps → `manage.py check` → `makemigrations --check` → `pytest -W error::DeprecationWarning` → `git diff --check` |
+| `test-postgres` | 3.13 | PostgreSQL 16 service container | checkout → setup-python → cache pip → install deps → `manage.py check` (ci_postgres) → `migrate` → `pytest -W error::DeprecationWarning --ds=khaata.settings.ci_postgres` |
+
+#### PostgreSQL service container
+- Image: `postgres:16`; database/user/password: `khaata_ci` (CI-only, no production connection)
+- Health check: `pg_isready` every 5s, 10 retries
+- The `test-postgres` job exercises: partial unique indexes (`WHERE type='MONTHLY'`, `WHERE scope='MONTHLY_OVERALL'`, `WHERE scope='EVENT'`, `WHERE deleted_at IS NULL`), `select_for_update` row locking, grouped `Sum` with `values()` and NULL handling, and all database constraints (CheckConstraints, UniqueConstraints, FK PROTECT).
+
+#### Actions pinning
+- `actions/checkout@v4` — stable v4 tag
+- `actions/setup-python@v5` — stable v5 tag
+- `actions/cache@v4` — stable v4 tag
+
+#### Security
+- `permissions: contents: read` (workflow-level)
+- No secrets in workflow YAML (PostgreSQL credentials are throwaway CI-only values in plain text; no `${{ secrets.* }}` references needed)
+- No deployment, publishing, or privileged steps
+
+#### Local verification (no local PostgreSQL available)
+- `ci_postgres.py` settings import correctly; PostgreSQL engine selected; confirmed via Python import test
+- `manage.py check --settings=khaata.settings.ci_postgres` → 0 issues (with mock env vars)
+- Full SQLite suite: `python -W error::DeprecationWarning -m pytest -q` → **679 passed**
+- `git diff --check` → clean
+
+#### Required manual action (owner)
+To make both CI jobs required status checks that block PR merges, the repository owner must:
+1. Navigate to **GitHub → Repository → Settings → Branches → Branch protection rules**
+2. Add a protection rule for `main`
+3. Enable **Require status checks to pass before merging**
+4. Add the following required checks:
+   - `Test (SQLite) — Python 3.12`
+   - `Test (SQLite) — Python 3.13`
+   - `Test (PostgreSQL 16) — Python 3.13`
+
+No GitHub Secrets need to be configured for this workflow (the PostgreSQL credentials are inline CI-only values, not production secrets).
+
+#### BOOT-002 file inventory
+New files:
+- `.github/workflows/backend-ci.yml`
+- `backend/khaata/settings/ci_postgres.py`
+
+Updated documentation:
+- `docs/development/IMPLEMENTATION_BACKLOG.md`
+- `docs/development/PROJECT_STATUS.md`
+- `docs/development/HANDOFF.md`
+- `CHANGELOG.md`
 
 ### BE-009 summary
 - No new app, model, migration, or admin. Integration-and-hardening task.

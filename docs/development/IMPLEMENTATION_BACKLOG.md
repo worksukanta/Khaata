@@ -13,9 +13,18 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: clean Git status; no secrets committed; docs retained; project layout matches README.
 
 ### BOOT-002 — Add CI baseline
-- Status: TODO
-- Add backend test/lint and frontend lint/typecheck/build workflows as their projects exist.
-- Acceptance: workflow runs on pull requests and failures block merge.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Created `.github/workflows/backend-ci.yml` — two-job GitHub Actions workflow.
+  - **`test-sqlite`**: matrix on Python 3.12 and 3.13; installs `requirements-dev.txt`; Django system check; migration consistency check; full test suite `-W error::DeprecationWarning`; `git diff --check`. No external services.
+  - **`test-postgres`**: Python 3.13; PostgreSQL 16 service container; `manage.py migrate`; Django system check; full test suite with `-W error::DeprecationWarning` against a real PostgreSQL database (verifies partial unique indexes, DB constraints, `select_for_update`, aggregation).
+- Added `backend/khaata/settings/ci_postgres.py` — PostgreSQL settings for the CI service container, reads `DJANGO_SECRET_KEY`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` from environment; no `python-decouple` dependency; no secrets hardcoded.
+- Triggers on push and pull requests to `main` (path filter: `backend/**` and `.github/workflows/backend-ci.yml`).
+- Third-party actions pinned to stable tags: `actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`.
+- Permissions: `contents: read` (least privilege).
+- No secrets stored in the repository. The PostgreSQL password in the workflow is a throwaway CI-only value.
+- Frontend build steps not included (frontend not yet implemented; tracked by FE-001 onward).
+- Local verification: `ci_postgres.py` loads correctly, `manage.py check --settings=khaata.settings.ci_postgres` → 0 issues, full SQLite suite → 679 passed.
+- Acceptance: workflow runs on push/PR; both jobs must pass for a PR to merge (configure branch protection in GitHub repository settings).
 
 ## Milestone M1 — Backend foundation
 
