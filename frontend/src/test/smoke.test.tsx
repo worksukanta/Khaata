@@ -1,17 +1,35 @@
 /**
- * Smoke test: verifies that the Khaata application renders without crashing
- * and that the router delivers the correct page for the root route.
+ * Smoke tests: verify that core application components render without crashing.
  *
- * This test does NOT call the backend API.  It uses MemoryRouter so the
- * test environment's lack of a real URL does not interfere.
+ * FE-002 update: protected routes now require AuthProvider + AuthContext.
+ * These tests use MemoryRouter + mocked AuthContext to keep them isolated
+ * from the API and remain deterministic.
  */
 
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { vi } from 'vitest'
+import type { ReactNode } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import HomePage from '@/features/home/HomePage'
 import NotFoundPage from '@/components/layout/NotFoundPage'
 import PlaceholderPage from '@/components/layout/PlaceholderPage'
+
+// ---------------------------------------------------------------------------
+// Mock AuthContext so AppShell/layout components don't error when rendered
+// directly in tests without a real AuthProvider.
+// ---------------------------------------------------------------------------
+
+vi.mock('@/features/auth/AuthContext', () => ({
+  useAuth: () => ({
+    initializing: false,
+    user: { id: '1', email: 'smoke@test.com', display_name: 'Smoke', timezone: 'UTC' },
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  }),
+  AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+}))
 
 describe('Application smoke test', () => {
   it('renders the HomePage inside AppShell without crashing', () => {
@@ -82,4 +100,20 @@ describe('Application smoke test', () => {
       screen.getByRole('heading', { name: /^books$/i }),
     ).toBeInTheDocument()
   })
+
+  it('renders AppShell with an Outlet for nested routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/test']}>
+        <Routes>
+          <Route path="/" element={<AppShell />}>
+            <Route path="test" element={<div>Nested Content</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Nested Content')).toBeInTheDocument()
+  })
 })
+
+// Keep the Outlet import used (it's used by AppShell internally; this avoids lint unused-import)
+void Outlet

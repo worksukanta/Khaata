@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### FE-002 — Authentication screens and session integration
+- **AuthProvider** (`src/features/auth/AuthContext.tsx`): shared React context with `initializing`, `user`, `login()`, `register()`, `logout()`. Restores session on mount via `GET /auth/me/`; sets CSRF cookie via `bootstrapCsrf()` first; never stores credentials in localStorage. `login()` calls the service (which re-fetches CSRF after token rotation) then calls `/auth/me/` to load the user. `register()` does NOT log the user in (per API contract). `useAuth()` throws if used outside the provider.
+- **`register()` added to auth service** (`src/services/api/auth.ts`): `POST /auth/register/` with `{ email, password, display_name }` → `User` (HTTP 201).
+- **PrivateRoute** (`src/features/auth/PrivateRoute.tsx`): renders `null` while initializing (prevents redirect flash); redirects unauthenticated users to `/login` with `state.from` set; renders `<Outlet />` when authenticated.
+- **PublicOnlyRoute** (`src/features/auth/PublicOnlyRoute.tsx`): renders `null` while initializing; redirects authenticated users to `/`; renders `<Outlet />` for unauthenticated users.
+- **LoginPage** (`src/features/auth/LoginPage.tsx`): email + password form; client-side validation (required, email format); API error banner; loading/disabled state; navigates to `state.from` or `/` after success; link to `/register`. Accessible labels, `aria-required`, `aria-invalid`, `aria-describedby`, `aria-busy`, `role="alert"`.
+- **RegisterPage** (`src/features/auth/RegisterPage.tsx`): display-name, email, password, confirm-password form; client-side validation (required, email format, password ≥ 10 chars, confirm-match); per-field API errors (duplicate email); loading/disabled state; post-registration success view with link to `/login` — does NOT auto-login. Accessible labels and ARIA.
+- **Router updated** (`src/app/router/index.tsx`): `/login` and `/register` wrapped in `PublicOnlyRoute`; all app routes wrapped in `PrivateRoute` + `AppShell`; 404 catch-all at top level.
+- **AppProviders updated** (`src/app/providers/index.tsx`): `QueryClientProvider` (TanStack Query) + `AuthProvider` + `RouterProvider` in nesting order. QueryClient configured with 4xx no-retry policy and 30 s stale time.
+- **TanStack Query added** (`@tanstack/react-query ^5.80.7`): shared `QueryClient` in `AppProviders`; ready for data-fetching in FE-003+.
+- **Tests:** 68 tests total (was 6); 62 new across 4 test files:
+  - `AuthContext.test.tsx`: 12 tests — session restore (success/401/network error), initializing state, login success/failure/CSRF, register success/no-auto-login/duplicate-email, logout success/service call, useAuth-outside-provider.
+  - `RouteGuards.test.tsx`: 11 tests — PrivateRoute (null-while-init, redirect-unauth, render-auth, books redirect), PublicOnlyRoute (null-while-init, login/register pages unauthenticated, redirect-auth from login/register), destination preservation.
+  - `LoginPage.test.tsx`: 17 tests — rendering, client-side validation (4), successful login with default/preserved destination, API/network error display, loading/disabled state, accessibility.
+  - `RegisterPage.test.tsx`: 21 tests — rendering, client-side validation (6), successful registration flow (no auto-login, success view, navigate-to-login link), duplicate-email error, generic API error, loading state, accessibility.
+  - Smoke tests updated (5): added AuthContext mock so layout components render without a real provider.
+- **CI:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **68/68 passed**; `vite build` → 432 kB JS (gzip: 137 kB) + 11.5 kB CSS (gzip: 3.1 kB). Build size increase is from TanStack Query (~104 kB min, ~35 kB gzip).
+- **No backend changes.** API contract followed exactly; no contract defects found.
+- **Known issues:** Same 12 moderate dev-dependency vulnerabilities as FE-001 (ESLint/minimatch transitive; dev-only; within 90-day remediation window). TanStack Query DevTools not added (not needed for V1).
+
 ### FE-001 — Frontend foundation (React + TypeScript + Vite)
 - Created `frontend/` React/TypeScript/Vite application.
 - **Stack:** React 19, TypeScript 5.8 (strict mode), Vite 6, Tailwind CSS 3.4, React Router 7, Axios 1.9, Vitest 5 + Testing Library.

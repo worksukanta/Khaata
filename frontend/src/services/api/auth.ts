@@ -25,6 +25,24 @@ export async function bootstrapCsrf(): Promise<void> {
   await apiClient.get<{ detail: string }>(`${AUTH}/csrf/`)
 }
 
+/**
+ * Register a new account.
+ * Per API_CONTRACT.md §2: registration does NOT automatically log the user in.
+ * Returns the created User object (HTTP 201).
+ */
+export async function register(
+  email: string,
+  password: string,
+  display_name: string,
+): Promise<User> {
+  const response = await apiClient.post<User>(`${AUTH}/register/`, {
+    email,
+    password,
+    display_name,
+  })
+  return response.data
+}
+
 /** Log in with email + password.  Sets the session cookie. */
 export async function login(email: string, password: string): Promise<void> {
   await apiClient.post<{ detail: string }>(`${AUTH}/login/`, { email, password })

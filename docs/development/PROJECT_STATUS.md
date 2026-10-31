@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-31
-**Current phase:** FE-001 (Frontend foundation) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BOOT-002, BE-007, BE-008, BE-009, and now FE-001 are implemented but not yet merged.
+**Current phase:** FE-002 (Authentication screens and session integration) implemented in the working tree (uncommitted; user handles all Git operations). BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BOOT-002, BE-007, BE-008, BE-009, FE-001, and FE-002 are all implemented but not yet merged.
 
 ## Approved baselines
 
@@ -23,11 +23,13 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BOOT-002, BE-007, BE-008, BE-009, and FE-001 are all implemented (pending user review/merge). Next: `FE-002` (Auth screens and API client — login, register, logout, route protection) after FE-001 is reviewed and merged. **Manual action required**: enable branch protection on `main` in the GitHub repository settings; add the frontend CI job `Frontend (Node 22)` as a required status check alongside the backend jobs.
+Step 5 — vertical-slice implementation continues. BOOT-002, BE-007, BE-008, BE-009, FE-001, and FE-002 are all implemented (pending user review/merge). Next: `FE-003` (Books screens — monthly/event/general list, event/general create/edit/archive, month navigation) after FE-002 is reviewed and merged. **Manual action required**: enable branch protection on `main` in the GitHub repository settings; add the frontend CI job `Frontend (Node 22)` as a required status check alongside the backend jobs.
 
 ## Last known verification
 
-FE-001: React 19 + TypeScript 5.8 + Vite 6 + Tailwind 3.4 + React Router 7 + Axios 1.9 + Vitest 5; `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **6 passed** (4 smoke + 2 client unit; jsdom); `vite build` → 328 kB JS (gzip: 104 kB) + 9.7 kB CSS (gzip: 2.7 kB); no secrets committed. 12 moderate dev-dependency vulnerabilities in ESLint/minimatch (no upstream fix available; dev-only tools, never shipped to production; within the 90-day remediation window per security policy). Backend suite unaffected (no Python files changed).
+FE-002: React 19 + TypeScript 5.8 + Vite 6 + Tailwind 3.4 + React Router 7 + Axios 1.9 + TanStack Query 5.80 + Vitest 5; `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **68 passed** (5 smoke + 2 client unit + 12 AuthContext + 11 RouteGuards + 17 LoginPage + 21 RegisterPage; jsdom); `vite build` → 432 kB JS (gzip: 137 kB) + 11.5 kB CSS (gzip: 3.1 kB); no secrets committed. 12 moderate dev-dependency vulnerabilities in ESLint/minimatch (no upstream fix available; dev-only tools, never shipped to production; within the 90-day remediation window per security policy). No backend files changed.
+
+Previous (FE-001): React 19 + TypeScript 5.8 + Vite 6 + Tailwind 3.4 + React Router 7 + Axios 1.9 + Vitest 5; `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **6 passed** (4 smoke + 2 client unit; jsdom); `vite build` → 328 kB JS (gzip: 104 kB) + 9.7 kB CSS (gzip: 2.7 kB); no secrets committed. 12 moderate dev-dependency vulnerabilities in ESLint/minimatch (no upstream fix available; dev-only tools, never shipped to production; within the 90-day remediation window per security policy). Backend suite unaffected (no Python files changed).
 
 Previous (BOOT-002): CI workflow created; local validation: `ci_postgres.py` settings load correctly (PostgreSQL engine confirmed); `manage.py check --settings=khaata.settings.ci_postgres` → 0 issues; full SQLite suite `python -W error::DeprecationWarning -m pytest -q` → 679 passed; `git diff --check` → clean. **PostgreSQL CI run will only execute on GitHub Actions** (no local PostgreSQL instance available in this environment). The full PostgreSQL suite is expected to pass: all partial indexes, constraints, `select_for_update` behaviour, and grouped aggregation queries are exercised by the existing 679-test suite on PostgreSQL.
 

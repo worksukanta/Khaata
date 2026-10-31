@@ -1,10 +1,105 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-019-FE-001` (follows `KH-CP-018-BOOT-002`)
+`KH-CP-020-FE-002` (follows `KH-CP-019-FE-001`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), BOOT-002 (CI baseline), and FE-001 (Frontend foundation) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All five implementations are complete; none are merged.** Awaiting user review/merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), BOOT-002 (CI baseline), FE-001 (Frontend foundation), and FE-002 (Authentication screens and session integration) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All six implementations are complete; none are merged.** Awaiting user review/merge.
+
+### FE-002 summary
+
+#### What was built
+- Authentication screens and session integration on top of FE-001 React/Vite foundation.
+- **No backend files changed**; no Python dependencies; no migrations.
+
+#### Architecture additions
+
+```
+frontend/src/
+├── features/auth/
+│   ├── AuthContext.tsx       — AuthProvider + useAuth hook (session restore, login, register, logout)
+│   ├── PrivateRoute.tsx      — Protects authenticated routes; null while initializing, redirects to /login
+│   ├── PublicOnlyRoute.tsx   — Guards /login and /register; redirects home when already logged in
+│   ├── LoginPage.tsx         — UX-01: email + password form; API errors; loading state; destination restore
+│   └── RegisterPage.tsx      — UX-02: display name + email + password + confirm; no auto-login on success
+├── services/api/
+│   └── auth.ts               — Added register() (POST /auth/register/) alongside existing login/logout/getMe
+├── app/
+│   ├── router/index.tsx      — Restructured: PublicOnlyRoute group, PrivateRoute+AppShell group, 404 catch-all
+│   └── providers/index.tsx   — Added QueryClientProvider (TanStack Query) + AuthProvider
+```
+
+#### Session and CSRF strategy (unchanged from FE-001 auth.ts)
+1. `GET /auth/csrf/` bootstrapped on mount to obtain `csrftoken` cookie.
+2. Axios request interceptor attaches `X-CSRFToken` on all non-safe methods.
+3. After `login()`, `bootstrapCsrf()` is called again to pick up the rotated CSRF token.
+4. `withCredentials: true` on every request; session cookie travels automatically.
+5. Session token never stored in localStorage.
+
+#### AuthProvider state machine
+- `initializing: true` → running `bootstrapCsrf()` + `GET /auth/me/`.
+- If `/auth/me/` returns 200: `user` set to the returned `User`; `initializing: false`.
+- If `/auth/me/` returns 401 or any error: `user = null`; `initializing: false`.
+- `login()` → service login (rotates CSRF) → `GET /auth/me/` → set user.
+- `register()` → service register → return User; **does NOT set user** (contract: no auto-login).
+- `logout()` → service logout → set user to null.
+
+#### Route guard behavior
+- `PrivateRoute`: renders `null` during init (no flash redirect); `<Navigate to="/login" state={{ from: location }} replace>` when unauthenticated; `<Outlet />` when authenticated.
+- `PublicOnlyRoute`: renders `null` during init; `<Navigate to="/" replace>` when authenticated; `<Outlet />` when unauthenticated.
+
+#### Dependencies added
+| Package | Version | Role |
+|---|---|---|
+| `@tanstack/react-query` | ^5.80.7 | Server-state management; shared QueryClient |
+
+#### Tests added (62 new; 68 total)
+| File | Tests |
+|---|---|
+| `AuthContext.test.tsx` | 12 |
+| `RouteGuards.test.tsx` | 11 |
+| `LoginPage.test.tsx` | 17 |
+| `RegisterPage.test.tsx` | 21 |
+| `smoke.test.tsx` (updated) | 5 (was 4) |
+
+#### Local verification
+- `tsc --noEmit` → 0 errors
+- `eslint .` → 0 warnings / errors
+- `vitest run` → **68 passed** (0 failed)
+- `vite build` → `dist/assets/index-*.js` 432 kB (gzip 137 kB) · `dist/assets/index-*.css` 11.5 kB (gzip 3.1 kB)
+
+#### Backend issues found
+None. Backend authentication behavior (no auto-login on registration, CSRF enforcement, session cookies, `/auth/me/` 401 for unauthenticated) matches the API contract exactly.
+
+#### Known issues / gaps
+1. **Dev-dependency vulnerabilities (moderate, 12):** unchanged from FE-001 (minimatch transitive in ESLint; dev-only; within 90-day remediation window).
+2. **TanStack Query DevTools:** not added (not needed for V1; add in a hardening pass if desired).
+3. **No test for CSRF cookie value after rotation:** the CSRF rotation behavior is covered at the auth service level (unit-tested in `client.test.ts`); the round-trip with a real browser cookie is an integration concern covered by the backend test suite.
+
+#### FE-002 file inventory
+New files:
+- `frontend/src/features/auth/AuthContext.tsx`
+- `frontend/src/features/auth/PrivateRoute.tsx`
+- `frontend/src/features/auth/PublicOnlyRoute.tsx`
+- `frontend/src/features/auth/LoginPage.tsx`
+- `frontend/src/features/auth/RegisterPage.tsx`
+- `frontend/src/features/auth/AuthContext.test.tsx`
+- `frontend/src/features/auth/RouteGuards.test.tsx`
+- `frontend/src/features/auth/LoginPage.test.tsx`
+- `frontend/src/features/auth/RegisterPage.test.tsx`
+
+Modified files:
+- `frontend/src/services/api/auth.ts` — added `register()` function
+- `frontend/src/app/router/index.tsx` — restructured with route guards
+- `frontend/src/app/providers/index.tsx` — added QueryClientProvider + AuthProvider
+- `frontend/src/test/smoke.test.tsx` — added AuthContext mock
+- `frontend/package.json` — added `@tanstack/react-query`
+- `frontend/package-lock.json` — updated lockfile
+- `docs/development/IMPLEMENTATION_BACKLOG.md` (FE-002 status → IN_PROGRESS)
+- `docs/development/PROJECT_STATUS.md` (phase, next milestone, verification)
+- `docs/development/HANDOFF.md` (checkpoint → KH-CP-020-FE-002)
+- `CHANGELOG.md` (FE-002 entry)
+
 
 ### FE-001 summary
 
@@ -395,7 +490,9 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-`FE-002` — Auth screens and API client (login, register, logout, route protection, `PrivateRoute` guard, `AuthProvider`, TanStack Query integration). Only after FE-001 is reviewed and merged by the user.
+`FE-003` — Books screens (monthly/event/general list, month navigation with `POST /books/monthly/{year}/{month}/ensure/` before opening, event/general create/edit/archive, empty/error states). Only after FE-002 is reviewed and merged by the user.
+
+**FE-002 is complete** — see FE-002 summary above for the full checkpoint.
 
 **Decision recorded for BE-005 (inactive-reference rule) — implemented:**
 New transactions MUST reject an inactive category or payment method. Deactivated references on existing (historical) transactions are preserved intact. Reactivation restores the option for new entries. Implementation requirement: the `create_transaction` and `update_transaction` service functions must check `category.is_active` and `payment_method.is_active` and raise a validation error if either is False. No database schema change is needed — this is a service-layer check. Record in ADR if behaviour is changed from this recommendation after review.

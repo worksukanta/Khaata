@@ -127,9 +127,10 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings; `vitest run` → 6/6 passed; `vite build` → succeeds.
 
 ### FE-002 — Auth screens and API client
-- Status: TODO
-- Typed API client, CSRF/session handling, login/register/logout and route protection.
-- Acceptance: no tokens in local storage; errors and loading states are accessible.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Implemented `AuthProvider` + `useAuth` hook (session restoration, login, register, logout); `PrivateRoute` + `PublicOnlyRoute` guards; `LoginPage` + `RegisterPage` functional screens; `register()` added to auth service; `@tanstack/react-query` added with shared `QueryClient`.
+- Router restructured: public-only group for `/login` and `/register`; PrivateRoute guard wraps all app routes; 404 catch-all at top level.
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **68/68 passed**; `vite build` → succeeds; no tokens in localStorage; errors and loading states are accessible.
 
 ### FE-003 — Books screens
 - Status: TODO
