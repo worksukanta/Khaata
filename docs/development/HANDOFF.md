@@ -1,10 +1,56 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-016-BE-008` (follows `KH-CP-015-BE-007`)
+`KH-CP-017-BE-009` (follows `KH-CP-016-BE-008`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports) and BE-008 (CSV export) are both implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **Both implementations are complete; neither is merged.** Awaiting user review/merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export) and BE-009 (Backend integration & hardening) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All three implementations are complete; none are merged.** Awaiting user review/merge.
+
+### BE-009 summary
+- No new app, model, migration, or admin. Integration-and-hardening task.
+- **New:** `backend/tests/test_integration.py` — 14 cross-module integration tests.
+- **Fixed:** `docs/api/openapi.yaml` — `GET /books/` was missing the `ordering` query parameter (`name|-name|created_at|-created_at`); added.
+- **Updated:** `CHANGELOG.md`, `docs/development/PROJECT_STATUS.md`, `docs/development/HANDOFF.md`.
+- Verification: `pytest tests/test_integration.py` → 14 passed; full suite `python -W error::DeprecationWarning -m pytest -q` → 679 passed (665 pre-existing + 14 new; SQLite; **PostgreSQL not exercised**); `manage.py check` → 0 issues; `makemigrations --check --dry-run` → no changes; `git diff --check` → clean.
+- PostgreSQL gap carries forward (same as BE-007 / BE-008).
+
+#### Integration tests added (`backend/tests/test_integration.py`)
+1. `test_registration_seeds_default_categories_and_payment_methods` — POST /auth/register/ seeds defaults.
+2. `test_event_expense_counted_in_both_event_and_monthly_budget` — single event-book expense counted in both event and monthly budgets.
+3. `test_income_transactions_excluded_from_budget_spending` — INCOME never counts against budget spending.
+4. `test_soft_delete_removes_from_all_aggregations` — deletion removes from list/detail/reports/budget/CSV simultaneously.
+5. `test_date_reassignment_in_monthly_book_updates_report` — monthly-book date change moves transaction and updates both months' reports.
+6. `test_archived_book_transactions_visible_in_reports_and_budget` — archiving a book does not remove its transactions from reports or budget spending.
+7. `test_opening_balance_not_income_closing_balance_formula` — opening balance excluded from income; `closing_balance = opening_balance + income − expense`.
+8. `test_budget_overspend_never_blocks_transaction` — transactions always succeed even when budget is over-limit.
+9. `test_monthly_report_counts_each_transaction_once` — `expense_total == sum(breakdown expenses)`.
+10. `test_budget_utilization_report_matches_budget_detail` — utilization endpoint byte-matches direct budget detail.
+11. `test_cross_user_isolation_across_all_endpoints` — no cross-user data leaks from any read endpoint.
+12. `test_error_envelope_shape_is_consistent_across_modules` — every 4xx follows the standard error envelope.
+13. `test_historical_reference_preserved_after_category_deactivation` — existing transactions keep inactive categories; new creation rejected.
+14. `test_csv_export_consistent_with_transaction_list` — CSV IDs match list IDs; formula-injection escaping verified.
+
+#### Security audit findings
+- All querysets owner-scoped (`book__owner=request.user`, `owner=request.user`); path-id lookups use `get_object_or_404`. ✓
+- CSRF enforced for all state-changing operations (`SessionAuthentication` + `CsrfViewMiddleware`). ✓
+- Archived-book restrictions enforced in services for create/update/delete. ✓
+- Soft-deleted transactions excluded from all aggregations via `Transaction.objects` (active-only manager). ✓
+- Historical inactive-category/payment-method references preserved; new selections rejected. ✓
+- Decimal arithmetic throughout; no float arithmetic; `DecimalField(max_digits=14, decimal_places=2)` on all money fields. ✓
+- Monthly budget aggregation via single grouped `Sum` query per budget; event isolation correct. ✓
+- CSV formula-injection: user-controlled text cells starting with `=`, `+`, `-`, `@` are tab-prefixed. ✓
+- Error responses never expose stack traces, secrets, or other user data. ✓
+- No secrets in code. ✓
+
+#### API/OpenAPI mismatches found and fixed
+- **`GET /books/` missing `ordering` parameter** — The contract (API_CONTRACT.md section 3) documents `ordering=name|-name|created_at|-created_at`; the implementation honours it; the YAML was not documenting it. Fixed.
+- No other mismatches found between implementation and contract.
+
+#### Known risks / outstanding gaps
+- **PostgreSQL not exercised**: partial unique indexes, `select_for_update` behaviour, grouped `Sum` with `values()` and NULL handling all need a PostgreSQL run before deployment. This gap is inherited from all prior milestones.
+- **OpenAPI not machine-validated**: PyYAML is not installed in the venv and no dependency was added. The YAML was editorially reviewed.
+- **No true concurrency tests**: `select_for_update` locking (budget allocation replacement, transaction update) is exercised at the service layer but concurrent execution is not testable without PostgreSQL and threads.
+- **`seed_defaults` management command** has no automated test coverage (carried forward from BE-004).
 
 ### BE-008 summary
 - New app `khaata.apps.exports` (registered in `INSTALLED_APPS`; routed at `/api/v1/exports/`). No models, migrations, or admin. No new dependency.

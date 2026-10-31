@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-31
-**Current phase:** BE-008 (CSV export) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BE-007 (Dashboard and reports) is also implemented but not yet merged.
+**Current phase:** BE-009 (Backend integration & hardening) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BE-007 (Dashboard and reports) and BE-008 (CSV export) are also implemented but not yet merged.
 
 ## Approved baselines
 
@@ -23,11 +23,13 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BE-007 and BE-008 are both implemented (pending user review/merge). Next: `BOOT-002` (CI baseline) or `FE-001` (React/Vite/TypeScript setup), only after BE-007 and BE-008 are reviewed and merged.
+Step 5 — vertical-slice implementation continues. BE-007, BE-008 and BE-009 are all implemented (pending user review/merge). Next: `BOOT-002` (CI baseline) or `FE-001` (React/Vite/TypeScript setup), only after BE-007, BE-008 and BE-009 are reviewed and merged.
 
 ## Last known verification
 
-BE-008: Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/exports` → 47 passed; full suite `.venv/Scripts/python -W error::DeprecationWarning -m pytest -q` → 665 passed (618 pre-existing + 47 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
+BE-009: Django 5.2.18 + DRF 3.18.3; focused `pytest tests/test_integration.py` → 14 passed (all new integration tests); full suite `python -W error::DeprecationWarning -m pytest -q` → 679 passed (665 pre-existing + 14 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
+
+Previous (BE-008): Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/exports` → 47 passed; full suite `.venv/Scripts/python -W error::DeprecationWarning -m pytest -q` → 665 passed (618 pre-existing + 47 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
 
 Previous (BE-007): Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/reports` → 86 passed; full suite `python -W error::DeprecationWarning -m pytest -q` → 618 passed (532 pre-existing + 86 new; in-memory SQLite; **PostgreSQL not exercised** — behaviour of `Sum`/`values()` grouping and the partial indexes on PostgreSQL, and query plans, are unverified); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added): only a tab/indent sanity check was run.
 

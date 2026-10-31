@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### BE-009 — Backend integration & hardening
+- Added `backend/tests/test_integration.py` with 14 cross-module integration tests covering: registration seeding; event-expense dual-budget counting; income excluded from budget spending; soft-delete removes from list/detail/reports/budget/CSV simultaneously; date-based book reassignment reflected in monthly reports; archived-book transactions remain in reports and budget spending; opening balance excluded from income (closing_balance formula); budget overspend never blocks a write; monthly report counts each transaction exactly once; budget-utilization matches direct budget detail; cross-user isolation across all endpoints; error envelope consistency; historical inactive-category reference preserved; CSV/list consistency with formula-injection escaping.
+- Fixed OpenAPI documentation mismatch: `GET /books/` was missing the `ordering` query parameter (`name | -name | created_at | -created_at`) documented in `API_CONTRACT.md` section 3. Added to `docs/api/openapi.yaml`.
+- No model or migration changes.
+- Full test suite: **679 passed** (665 pre-existing + 14 new) under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised — same outstanding gap as BE-008).
+- `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes; `git diff --check` → clean.
+
 ### BE-008 — CSV export
 - Added `khaata.apps.exports` (no models/migrations/admin) registered in `INSTALLED_APPS` and routed at `/api/v1/exports/`.
 - Endpoint: `GET /api/v1/exports/transactions.csv`. Returns the authenticated user's active transactions as a `text/csv; charset=utf-8` file with `Content-Disposition: attachment; filename="transactions.csv"`.

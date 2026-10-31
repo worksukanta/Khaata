@@ -92,6 +92,12 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - 86 new tests (38 service, 48 API incl. a constant-query-count test); full suite 618 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
 - Acceptance: event expenses count once in monthly totals (tested); cross-user isolation (tested); soft-deleted excluded (tested).
 
+### BE-009 — Backend integration & hardening
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- 14 new cross-module integration tests in `backend/tests/test_integration.py`.
+- OpenAPI fix: `GET /books/` `ordering` parameter added to `docs/api/openapi.yaml`.
+- Full suite 679 passed; Django check clean; no migrations; git diff --check clean. PostgreSQL not exercised.
+
 ### BE-008 — CSV export
 - Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
 - `GET /api/v1/exports/transactions.csv` per `API_CONTRACT.md` section 8. New app `khaata.apps.exports`; no models, migrations, or admin; no new dependency.

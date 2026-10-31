@@ -95,6 +95,12 @@ paths:
           name: is_archived
           schema: { type: boolean }
         - in: query
+          name: ordering
+          description: Sort order; unknown values fall back to `-created_at`.
+          schema:
+            type: string
+            enum: [name, -name, created_at, -created_at]
+        - in: query
           name: page
           schema: { type: integer, minimum: 1 }
       responses:
