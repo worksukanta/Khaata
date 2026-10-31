@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### BE-008 — CSV export
+- Added `khaata.apps.exports` (no models/migrations/admin) registered in `INSTALLED_APPS` and routed at `/api/v1/exports/`.
+- Endpoint: `GET /api/v1/exports/transactions.csv`. Returns the authenticated user's active transactions as a `text/csv; charset=utf-8` file with `Content-Disposition: attachment; filename="transactions.csv"`.
+- Accepts the same filters as `GET /transactions/`: `book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search`. Malformed filter values → 400 `validation_error` (reuses `TransactionFilterSerializer`). No `ordering` parameter.
+- CSV columns: `id`, `book_id`, `type`, `amount`, `transaction_date`, `category_id`, `category_name`, `payment_method_id`, `payment_method_name`, `description`, `created_at`, `updated_at`. Amount is a decimal string; dates are ISO 8601; null FK fields are empty strings.
+- Formula-injection mitigation: user-controlled text cells (`description`, `category_name`, `payment_method_name`) that start with `=`, `+`, `-`, or `@` are prefixed with a tab (OWASP CSV injection defence).
+- Ownership enforced via `book__owner=request.user`. Uses `Transaction.objects` (active-only manager); soft-deleted rows are never exported. Cross-user `book_id` returns an empty result (not an error).
+- `docs/api/openapi.yaml`: added full parameters, response headers, example, and `400` response code for the `/exports/transactions.csv` path.
+- 47 new tests covering: auth, response shape, headers, empty/populated export, all filters individually and combined, malformed inputs, cross-user isolation, soft-delete exclusion, formula-injection escaping for all four prefixes across three columns, null handling, column count, and unknown-param tolerance.
+- Full suite 665 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
+
 ### BE-007 — Dashboard and reports
 - Added `khaata.apps.reports` (no models/migrations/admin) registered in `INSTALLED_APPS` and routed at `/api/v1/reports/`.
 - Endpoints (read-only, authenticated): `GET /api/v1/reports/monthly/?year=&month=`, `GET /api/v1/reports/books/{id}/`, `GET /api/v1/reports/budget-utilization/?year=&month=`. `year` 2000–2200 / `month` 1–12 validated (400 otherwise); unknown and cross-user book ids → identical 404.

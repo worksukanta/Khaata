@@ -555,12 +555,54 @@ paths:
   /exports/transactions.csv:
     get:
       summary: Export filtered active transactions as CSV
+      description: >
+        Returns the authenticated user's active transactions as a UTF-8 CSV
+        file. Accepts the same filter parameters as GET /transactions/.
+        Soft-deleted transactions are excluded. Formula-injection characters
+        (=, +, -, @) at the start of user-controlled cells are escaped with
+        a leading tab. No pagination — the full filtered result set is returned.
+      parameters:
+        - in: query
+          name: book_id
+          schema: { type: string, format: uuid }
+          description: Restrict to transactions in this book.
+        - in: query
+          name: type
+          schema: { type: string, enum: [INCOME, EXPENSE] }
+          description: Restrict to a single transaction type.
+        - in: query
+          name: category_id
+          schema: { type: string, format: uuid }
+          description: Restrict to transactions with this category.
+        - in: query
+          name: payment_method_id
+          schema: { type: string, format: uuid }
+          description: Restrict to transactions with this payment method.
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+          description: Include transactions on or after this date (YYYY-MM-DD).
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+          description: Include transactions on or before this date (YYYY-MM-DD).
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Case-insensitive substring match on description.
       responses:
         "200":
-          description: CSV file
+          description: CSV file with transaction rows
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              example: 'attachment; filename="transactions.csv"'
           content:
             text/csv:
               schema: { type: string, format: binary }
+              example: |
+                id,book_id,type,amount,transaction_date,category_id,category_name,payment_method_id,payment_method_name,description,created_at,updated_at
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 components:
   securitySchemes:

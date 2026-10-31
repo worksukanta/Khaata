@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-10-31
-**Current phase:** BE-007 (Dashboard and reports) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). CSV export is split out as BE-008 (not started).
+**Current phase:** BE-008 (CSV export) implemented in the working tree (uncommitted; user handles all Git operations), awaiting user review and merge. BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BE-007 (Dashboard and reports) is also implemented but not yet merged.
 
 ## Approved baselines
 
@@ -23,11 +23,13 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BE-007 is implemented (pending user review/merge). Next: `BE-008` (CSV export) or `BOOT-002` (CI baseline), only after BE-007 is reviewed. BE-008 has NOT been started.
+Step 5 — vertical-slice implementation continues. BE-007 and BE-008 are both implemented (pending user review/merge). Next: `BOOT-002` (CI baseline) or `FE-001` (React/Vite/TypeScript setup), only after BE-007 and BE-008 are reviewed and merged.
 
 ## Last known verification
 
-BE-007: Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/reports` → 86 passed; full suite `python -W error::DeprecationWarning -m pytest -q` → 618 passed (532 pre-existing + 86 new; in-memory SQLite; **PostgreSQL not exercised** — behaviour of `Sum`/`values()` grouping and the partial indexes on PostgreSQL, and query plans, are unverified); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added): only a tab/indent sanity check was run.
+BE-008: Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/exports` → 47 passed; full suite `.venv/Scripts/python -W error::DeprecationWarning -m pytest -q` → 665 passed (618 pre-existing + 47 new; in-memory SQLite; **PostgreSQL not exercised**); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added).
+
+Previous (BE-007): Django 5.2.18 + DRF 3.18.3; focused `pytest khaata/apps/reports` → 86 passed; full suite `python -W error::DeprecationWarning -m pytest -q` → 618 passed (532 pre-existing + 86 new; in-memory SQLite; **PostgreSQL not exercised** — behaviour of `Sum`/`values()` grouping and the partial indexes on PostgreSQL, and query plans, are unverified); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes (no models added); `git diff --check` → clean. OpenAPI YAML not machine-validated (PyYAML and other YAML/OpenAPI tooling are not installed; no dependency was added): only a tab/indent sanity check was run.
 
 Previous (BE-006, final review correction):
 BE-006 (final review correction): Django 5.2.18 + DRF 3.18.3; full suite `python -W error::DeprecationWarning -m pytest -q` → 532 passed (517 pre-existing + 15 new admin tests; in-memory SQLite; PostgreSQL not exercised, so partial unique indexes, `select_for_update` row locking and true concurrency are untested on PostgreSQL); `manage.py check --settings=khaata.settings.test` → 0 issues; `makemigrations --check --dry-run` → no changes; `git diff --check` → benign LF→CRLF notice on pre-existing `base.py` only (unchanged, no code whitespace errors); new admin files are clean. OpenAPI YAML syntax not machine-validated (PyYAML not installed in the venv). Admin allocation cap enforcement: `BudgetAllocationFormSet.clean()` validates aggregate `sum(allocations) <= total_limit` before any DB write; 8 unit tests + 7 integration tests all pass.

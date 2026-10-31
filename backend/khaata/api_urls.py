@@ -17,6 +17,7 @@ urlpatterns = [
     path("books/", include("khaata.apps.books.urls")),
     path("budgets/", include("khaata.apps.budgets.urls")),
     path("categories/", include(category_urlpatterns)),
+    path("exports/", include("khaata.apps.exports.urls")),
     path("payment-methods/", include(payment_method_urlpatterns)),
     path("reports/", include("khaata.apps.reports.urls")),
     path("transactions/", include(transaction_urlpatterns)),

@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "khaata.apps.transactions",
     "khaata.apps.budgets",
     "khaata.apps.reports",
+    "khaata.apps.exports",
     "khaata.apps.health",
 ]
 

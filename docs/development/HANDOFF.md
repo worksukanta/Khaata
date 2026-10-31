@@ -1,10 +1,28 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-015-BE-007` (follows `KH-CP-014-BE-006-REVIEW`; same sequence, no renaming)
+`KH-CP-016-BE-008` (follows `KH-CP-015-BE-007`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports) is implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **Implementation is complete; it is NOT merged.** Awaiting user review/merge. BE-008 (CSV export) has NOT been started.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports) and BE-008 (CSV export) are both implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **Both implementations are complete; neither is merged.** Awaiting user review/merge.
+
+### BE-008 summary
+- New app `khaata.apps.exports` (registered in `INSTALLED_APPS`; routed at `/api/v1/exports/`). No models, migrations, or admin. No new dependency.
+- One endpoint (read-only GET, `IsAuthenticated`): `/exports/transactions.csv`.
+- Accepts the same filters as `GET /transactions/`: `book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search`. Malformed values → 400 `validation_error` (reuses `TransactionFilterSerializer`). Unknown `ordering` and all unrecognised query params are silently ignored.
+- Returns `text/csv; charset=utf-8` with `Content-Disposition: attachment; filename="transactions.csv"`.
+- Ownership enforced via `book__owner=request.user`; uses `Transaction.objects` (active-only manager) so soft-deleted rows are never exported.
+- CSV columns (in order): `id`, `book_id`, `type`, `amount`, `transaction_date`, `category_id`, `category_name`, `payment_method_id`, `payment_method_name`, `description`, `created_at`, `updated_at`. Amount is a decimal string; dates are ISO 8601; timestamps are ISO 8601 with timezone.
+- Formula-injection escaping: user-controlled text cells (`description`, `category_name`, `payment_method_name`) that start with `=`, `+`, `-`, or `@` are prefixed with a tab character (OWASP CSV injection mitigation). UUIDs and other non-user-text columns are never in scope.
+- No pagination; the full filtered queryset is streamed into an in-memory buffer and returned as a single response.
+- Default ordering: `-transaction_date, -created_at, -id` (same as the transaction list endpoint).
+- Decisions not in the contract: (1) null `category`/`payment_method` export as empty string; (2) null `description` exports as empty string; (3) `ordering` query param is not accepted for export (not mentioned in the contract for this endpoint); (4) a `book_id` belonging to another user is valid UUID syntax and passes filter validation, but the `book__owner` scope returns zero rows (not an error).
+- Verification: focused `pytest khaata/apps/exports` → 47 passed; full suite → 665 passed; `manage.py check` → 0 issues; `makemigrations --check --dry-run` → no changes; `git diff --check` → clean.
+- Known gaps / follow-ups: PostgreSQL run still pending; large export performance (no streaming iterator; uses `io.StringIO` buffer — acceptable for V1 transaction volumes); no `ordering` parameter for export.
+
+### BE-008 file inventory
+New in `backend/khaata/apps/exports/`: `__init__.py`, `apps.py`, `views.py`, `urls.py`, `test_exports_api.py`.
+Modified: `backend/khaata/settings/base.py` (INSTALLED_APPS), `backend/khaata/api_urls.py` (route), `docs/api/openapi.yaml`, `docs/development/{IMPLEMENTATION_BACKLOG,PROJECT_STATUS,HANDOFF}.md`, `CHANGELOG.md`.
 
 ### BE-007 summary
 - New app `khaata.apps.reports` (registered in `INSTALLED_APPS`; routed at `/api/v1/reports/`). No models, migrations or admin. No new dependency.
@@ -103,7 +121,7 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-After user review and merge of BE-007: `BE-008` — CSV export (`GET /exports/transactions.csv`, API_CONTRACT section 8) or `BOOT-002` CI baseline. Do not start BE-008 until BE-007 is reviewed. Export code must use `Transaction.objects` (active-only), `book__owner` scoping, and the same filter semantics as the transaction list.
+After user review and merge of BE-007 and BE-008: `BOOT-002` (CI baseline) or `FE-001` (React/Vite/TypeScript setup). There are no remaining backend tasks blocking the frontend milestone.
 
 **Decision recorded for BE-005 (inactive-reference rule) — implemented:**
 New transactions MUST reject an inactive category or payment method. Deactivated references on existing (historical) transactions are preserved intact. Reactivation restores the option for new entries. Implementation requirement: the `create_transaction` and `update_transaction` service functions must check `category.is_active` and `payment_method.is_active` and raise a validation error if either is False. No database schema change is needed — this is a service-layer check. Record in ADR if behaviour is changed from this recommendation after review.

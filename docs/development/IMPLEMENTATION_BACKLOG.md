@@ -93,9 +93,13 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: event expenses count once in monthly totals (tested); cross-user isolation (tested); soft-deleted excluded (tested).
 
 ### BE-008 — CSV export
-- Status: TODO (split out of the original BE-007; not started)
-- `GET /exports/transactions.csv` per `API_CONTRACT.md` section 8; same filter semantics as the transaction list; formula-injection escaping; owner-scoped, active rows only.
-- Acceptance: CSV formula injection mitigated; no other users' or soft-deleted rows exported.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- `GET /api/v1/exports/transactions.csv` per `API_CONTRACT.md` section 8. New app `khaata.apps.exports`; no models, migrations, or admin; no new dependency.
+- Filters: `book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search` (same as `GET /transactions/`; malformed → 400; reuses `TransactionFilterSerializer`). No `ordering` parameter (not specified for export).
+- Response: `text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="transactions.csv"`. Columns: `id, book_id, type, amount, transaction_date, category_id, category_name, payment_method_id, payment_method_name, description, created_at, updated_at`. Amount = decimal string; dates = ISO 8601.
+- Security: user-controlled text cells (`description`, `category_name`, `payment_method_name`) starting with `=`, `+`, `-`, `@` are prefixed with a tab (OWASP CSV injection mitigation). Ownership enforced via `book__owner=request.user`. Uses `Transaction.objects` (active-only manager) — soft-deleted rows never exported. Cross-user book_id filter returns empty result (not an error).
+- 47 new tests; full suite 665 passed under `-W error::DeprecationWarning` (SQLite; PostgreSQL not exercised).
+- Acceptance: CSV formula injection mitigated (tested); no other users' or soft-deleted rows exported (tested); all filters tested; authentication tested; malformed inputs → 400 tested.
 
 ## Milestone M2 — Frontend foundation
 
