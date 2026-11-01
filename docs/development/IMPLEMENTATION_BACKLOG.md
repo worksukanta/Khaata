@@ -126,6 +126,12 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - CI: `.github/workflows/frontend-ci.yml` (Node 22; path-filtered to `frontend/**`; steps: typecheck → lint → test → build).
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings; `vitest run` → 6/6 passed; `vite build` → succeeds.
 
+### FE-003 — Application layout and navigation
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Implemented `Topbar` (sticky header, hamburger trigger, user menu); `UserMenu` (initials avatar, dropdown, logout with error handling); `MobileDrawer` (slide-in dialog, Escape/backdrop/route-change close, body scroll lock); `AppShell` updated to wire Topbar + MobileDrawer.
+- No new npm dependencies. No backend changes. All FE-002 tests continue passing (101 total).
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **101/101 passed**; `vite build` → succeeds.
+
 ### FE-002 — Auth screens and API client
 - Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
 - Implemented `AuthProvider` + `useAuth` hook (session restoration, login, register, logout); `PrivateRoute` + `PublicOnlyRoute` guards; `LoginPage` + `RegisterPage` functional screens; `register()` added to auth service; `@tanstack/react-query` added with shared `QueryClient`.

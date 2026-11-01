@@ -1,10 +1,89 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-020-FE-002` (follows `KH-CP-019-FE-001`)
+`KH-CP-021-FE-003` (follows `KH-CP-020-FE-002`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), BOOT-002 (CI baseline), FE-001 (Frontend foundation), and FE-002 (Authentication screens and session integration) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All six implementations are complete; none are merged.** Awaiting user review/merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), BOOT-002 (CI baseline), FE-001 (Frontend foundation), FE-002 (Authentication screens and session integration), and FE-003 (Application layout and navigation) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All seven implementations are complete; none are merged.** Awaiting user review/merge.
+
+### FE-003 summary
+
+#### What was built
+- Responsive authenticated application shell with Topbar, UserMenu, and mobile drawer navigation.
+- **No backend files changed.** No Python dependencies. No migrations. No new npm dependencies.
+
+#### New components
+
+```
+frontend/src/components/layout/
+├── Topbar.tsx          — Sticky top header (h-14); hamburger (lg:hidden) + UserMenu
+├── UserMenu.tsx        — Avatar button (initials) → dropdown with user info + logout
+└── MobileDrawer.tsx    — Slide-in nav dialog for mobile/tablet; closes on Escape/backdrop/route-change
+```
+
+#### AppShell changes
+- `useState(drawerOpen)` drives `MobileDrawer` open/close.
+- `Topbar` is added above `<main>`.
+- MobileDrawer is rendered conditionally (returns `null` when `open=false`).
+- Layout column: `flex min-h-screen flex-col lg:pl-sidebar` containing Topbar → main → BottomNav.
+
+#### Responsive behavior
+| Width | Navigation |
+|---|---|
+| < 1024px (mobile) | Topbar hamburger opens MobileDrawer; BottomNav always visible |
+| 768–1023px (tablet) | Same as mobile (BottomNav + drawer) |
+| ≥ 1024px (desktop) | Fixed Sidebar (240px); Topbar shows user menu only; no hamburger |
+
+#### Accessibility implemented
+- `<header>` (`role="banner"`) in Topbar.
+- Hamburger: `aria-label="Open navigation menu"`.
+- MobileDrawer: `role="dialog" aria-label="Navigation menu" aria-modal="true"`.
+- Close button in drawer: `aria-label="Close navigation menu"`.
+- Escape key closes MobileDrawer and UserMenu.
+- UserMenu button: `aria-haspopup="true" aria-expanded={open}`.
+- UserMenu dropdown: `role="menu"`, logout: `role="menuitem"`.
+- `NavLink` sets `aria-current="page"` automatically on active route.
+- Body scroll locked while mobile drawer is open.
+- Focus moves to drawer close button on open.
+
+#### Tests (33 new; 101 total)
+`src/components/layout/AppShell.test.tsx`
+- AppShell structure: outlet, sidebar, header, nav, placeholder routes, 404
+- Navigation links: all destinations, aria-current, React Router SPA navigation
+- MobileDrawer: null when closed, dialog when open, links, close button, backdrop, Escape
+- Topbar hamburger: button present, fires onMenuOpen, UserMenu avatar present
+- AppShell drawer integration: open on hamburger, close on close button, close on nav item
+- UserMenu: initials, opens, user data, logout success, logout failure, email fallback, null user, Escape, aria-expanded
+- Auth pages outside AppShell: login renders without shell structure
+
+#### Local verification
+- `tsc --noEmit` → 0 errors
+- `eslint .` → 0 warnings / errors
+- `vitest run` → **101 passed** (0 failed)
+- `vite build` → 441 kB JS (gzip: 139 kB) · 13.1 kB CSS (gzip: 3.4 kB)
+
+#### Backend issues found
+None. No backend or API changes made or required.
+
+#### Known issues / gaps
+1. **Dev-dependency vulnerabilities (moderate, 12):** unchanged from FE-001/FE-002 (minimatch transitive in ESLint; dev-only; within 90-day remediation window).
+2. **No slide animation on MobileDrawer:** `prefers-reduced-motion` respected by default since there is no CSS animation; a slide-in transition can be added in a future polish pass without breaking accessibility.
+3. **Topbar has no page-title slot:** the desktop spec mentions "month selector, search where relevant" in the top header; these will be added in feature-specific screens (FE-004+) as each page controls its own header content.
+
+#### FE-003 file inventory
+New files:
+- `frontend/src/components/layout/Topbar.tsx`
+- `frontend/src/components/layout/UserMenu.tsx`
+- `frontend/src/components/layout/MobileDrawer.tsx`
+- `frontend/src/components/layout/AppShell.test.tsx`
+
+Modified files:
+- `frontend/src/components/layout/AppShell.tsx` — added Topbar + MobileDrawer
+- `docs/development/IMPLEMENTATION_BACKLOG.md` (FE-003 status → IN_PROGRESS)
+- `docs/development/PROJECT_STATUS.md` (phase, next milestone, verification)
+- `docs/development/HANDOFF.md` (checkpoint → KH-CP-021-FE-003)
+- `CHANGELOG.md` (FE-003 entry)
+
 
 ### FE-002 summary
 
@@ -490,8 +569,9 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-`FE-003` — Books screens (monthly/event/general list, month navigation with `POST /books/monthly/{year}/{month}/ensure/` before opening, event/general create/edit/archive, empty/error states). Only after FE-002 is reviewed and merged by the user.
+`FE-004` — Books screens (monthly/event/general list, month navigation with `POST /books/monthly/{year}/{month}/ensure/` before opening, event/general create/edit/archive, empty/error states). Only after FE-003 is reviewed and merged by the user.
 
+**FE-003 is complete** — see FE-003 summary above for the full checkpoint.
 **FE-002 is complete** — see FE-002 summary above for the full checkpoint.
 
 **Decision recorded for BE-005 (inactive-reference rule) — implemented:**

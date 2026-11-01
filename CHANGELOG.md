@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### FE-003 — Application layout and navigation
+- **Topbar** (`src/components/layout/Topbar.tsx`): sticky top header (h-14) present on all authenticated routes. Renders the hamburger button (mobile only, `lg:hidden`) and `UserMenu` on the right. Accessible: `role="banner"`, hamburger has `aria-label="Open navigation menu"`.
+- **UserMenu** (`src/components/layout/UserMenu.tsx`): avatar button showing two-letter initials (derived from `display_name`; falls back to email when blank). Dropdown (`role="menu"`) shows display name, email, and a Sign out `menuitem`. Closes on Escape, closes on click-outside. Logout uses `useAuth().logout()`; loading/disabled state during sign-out; inline error message on failure without pretending success. Returns `null` when no user (unauthenticated guard not reached).
+- **MobileDrawer** (`src/components/layout/MobileDrawer.tsx`): slide-in navigation dialog for mobile/tablet (hidden at `lg` and above). Contains the same six nav items as the desktop Sidebar (Home, Books, Add Transaction, Budgets, Reports, Settings). Closes on Escape, backdrop click, close button click, and route change. Focus moves to the close button on open. Locks body scroll while open. `role="dialog" aria-label="Navigation menu" aria-modal="true"`.
+- **AppShell updated** (`src/components/layout/AppShell.tsx`): incorporates Topbar and MobileDrawer; drawer open state managed in AppShell with `useState`. Layout: `lg:pl-sidebar` column containing Topbar + scrollable `<main>` + fixed BottomNav.
+- **Sidebar unchanged** in structure; React Router `NavLink` auto-sets `aria-current="page"` on the active link.
+- **No new dependencies** added.
+- **Tests** (`src/components/layout/AppShell.test.tsx`): 33 new tests across 7 describe blocks:
+  - AppShell structure (6): outlet content, sidebar landmark, banner, nav, placeholder routes, 404.
+  - Navigation links (5): all destinations present, aria-current on active route, React Router navigation without reload.
+  - MobileDrawer (6): null when closed, dialog when open, links, close button, backdrop, Escape.
+  - Topbar hamburger (3): button present, fires onMenuOpen, UserMenu avatar present.
+  - AppShell drawer integration (3): opens on hamburger, closes on close button, closes on nav item click.
+  - UserMenu (9): initials, opens, shows user data, logout success, logout failure error display, email fallback, null when no user, Escape closes, aria-expanded.
+  - Auth pages outside AppShell (1): login page renders without AppShell structure.
+- **CI:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **101/101 passed** (68 FE-002 + 33 FE-003); `vite build` → 441 kB JS (gzip: 139 kB) + 13.1 kB CSS (gzip: 3.4 kB).
+- **No backend changes.** No API contract changes. All FE-002 tests continue passing.
+
 ### FE-002 — Authentication screens and session integration
 - **AuthProvider** (`src/features/auth/AuthContext.tsx`): shared React context with `initializing`, `user`, `login()`, `register()`, `logout()`. Restores session on mount via `GET /auth/me/`; sets CSRF cookie via `bootstrapCsrf()` first; never stores credentials in localStorage. `login()` calls the service (which re-fetches CSRF after token rotation) then calls `/auth/me/` to load the user. `register()` does NOT log the user in (per API contract). `useAuth()` throws if used outside the provider.
 - **`register()` added to auth service** (`src/services/api/auth.ts`): `POST /auth/register/` with `{ email, password, display_name }` → `User` (HTTP 201).
