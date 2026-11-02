@@ -54,6 +54,43 @@ export interface Book {
   updated_at: string
 }
 
+/** Book types that users may create and edit directly (API_CONTRACT.md §3). */
+export type ManagedBookType = Exclude<BookType, 'MONTHLY'>
+
+export type BookOrdering = 'name' | '-name' | 'created_at' | '-created_at'
+
+/** Query parameters supported by GET /books/. */
+export interface BookListParams {
+  type?: BookType
+  search?: string
+  is_archived?: boolean
+  ordering?: BookOrdering
+  page?: number
+}
+
+/** Body for POST /books/ (EVENT or GENERAL only). */
+export interface CreateBookPayload {
+  type: ManagedBookType
+  name: string
+  description?: string
+  start_date?: string | null
+  end_date?: string | null
+}
+
+/** Body for PATCH /books/{id}/ — only editable metadata. */
+export interface UpdateBookPayload {
+  name?: string
+  description?: string
+  start_date?: string | null
+  end_date?: string | null
+}
+
+/** Result of POST /books/monthly/{year}/{month}/ensure/ (201 = created, 200 = existing). */
+export interface EnsureMonthlyBookResult {
+  book: Book
+  created: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Transaction types
 // ---------------------------------------------------------------------------

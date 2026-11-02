@@ -1,10 +1,72 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-021-FE-003` (follows `KH-CP-020-FE-002`)
+`KH-CP-022-FE-004` (follows `KH-CP-021-FE-003`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007 (Dashboard and reports), BE-008 (CSV export), BE-009 (Backend integration & hardening), BOOT-002 (CI baseline), FE-001 (Frontend foundation), FE-002 (Authentication screens and session integration), and FE-003 (Application layout and navigation) are all implemented in the working tree (uncommitted; the user handles all Git operations — none were performed by the agent). **All seven implementations are complete; none are merged.** Awaiting user review/merge.
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007, BE-008, BE-009, BOOT-002, FE-001, FE-002, FE-003 and FE-004 (Books management) are implemented; the user handles all Git operations — none were performed by the agent. FE-004 is in the working tree, uncommitted, awaiting user review/commit. **Next task: FE-005 — Quick transaction entry and history (not started).**
+
+### FE-004 summary
+
+#### What was built
+- Books management frontend on top of the existing Books REST API. **No backend files, API contract or OpenAPI changes. No new npm dependencies.**
+- Routes `/books` (UX-04) and `/books/:id` (UX-05, Books-related fields only) replace the placeholders; still inside `PrivateRoute` + `AppShell`.
+
+#### Contract finding (important)
+The task brief refers to `POST /books/{id}/unarchive/`. The API contract, `openapi.yaml` and the backend (`books/urls.py`) define **`POST /books/{id}/restore/`**; no `unarchive` route exists. The frontend uses `/restore/` (`restoreBook()`); UI copy says "Restore", matching UI_UX_SPECIFICATION ("Restore CTA"). No contract change was made.
+
+#### File layout
+```
+frontend/src/
+├── services/api/books.ts, errors.ts          (+ books.test.ts)
+├── types/index.ts                            (book request/param types added)
+├── components/ui/                            Modal, Toast(+Provider), StateViews, styles
+├── components/layout/AppShell.tsx            wraps content in ToastProvider
+├── app/router/index.tsx                      /books, /books/:id wired
+└── features/books/
+    ├── BooksPage.tsx                         type navigation + selected panel
+    ├── MonthlyBooksPanel.tsx                 month navigator + ensure + monthly list
+    ├── ManagedBooksPanel.tsx                 Event / General list, search, archived, dialogs
+    ├── BookDetailsPage.tsx                   metadata, edit/archive/restore, archived banner
+    ├── components/                           BookCard, BookForm, BookFormDialog,
+    │                                         ArchiveConfirmationDialog, BookTypeTabs,
+    │                                         MonthNavigator, Pagination
+    ├── hooks/useBooks.ts                     query keys, queries, mutations, debounce
+    ├── utils.ts, types.ts                    month math, formatting, validation, payloads
+    └── testUtils.tsx + *.test.ts(x)          in-memory fake backend and tests
+```
+
+#### Behaviour
+- **Monthly ensure:** selected month in URL (`?tab=monthly&year=&month=`), default = current month in the user's timezone. `useEnsureMonthlyBook` is a TanStack query keyed `['book-ensure', y, m]` with `staleTime: Infinity`: one in-flight POST per month across re-renders/consumers; revisiting a month does not re-POST; the book is shown only after success; errors show a Retry. Dec→Jan / Jan→Dec roll the year; navigation limited to 2000–2200. The key sits outside the `['books', …]` prefix so list invalidation never re-POSTs.
+- **Event/General:** list (`type`, `is_archived`, `search`, `page`, `ordering=-created_at`), debounced search (300 ms) and archived toggle kept in the URL, create/edit dialogs, archive confirmation, restore. Dialogs close only on success; field errors mapped from `error.details`; unmapped details keys (e.g. `detail`) appear as a form-level alert; input preserved on failure.
+- **Cache:** mutations `setQueryData(['books','detail',id])` with the returned book and invalidate `['books','list']`.
+- **MONTHLY:** never shows create/edit/archive/restore controls (list, card and details).
+
+#### Decisions / assumptions
+1. Un-archive = `/restore/` (see above).
+2. Name max 150 and description max 5000 are taken from `openapi.yaml` (`CreateBookRequest`), not invented.
+3. Event dates are optional (backend `required=False`); GENERAL form has no date fields; the update payload sends `null` to clear event dates.
+4. The "Monthly" tab shows the selected month's ensured book plus a paginated list of existing monthly books (`GET /books/?type=MONTHLY`), sorted newest-first client-side within the page.
+5. `GET /books/` supports no filter that forces archived monthly handling; monthly books are never archived so the archived toggle is hidden on the Monthly tab.
+6. Opening balance is shown read-only on the details page (it is a field of the Book response; it cannot be set through the API in V1).
+7. A `ToastProvider` was added to `AppShell` (DESIGN_SYSTEM lists Toast; no reusable feedback pattern existed).
+
+#### Known limitations
+1. No transactions, totals, budgets or reports on the book details page (FE-005+); the Topbar still has no month selector.
+2. The monthly list sorts newest-first only within the current page (backend ordering is `created_at`, not period).
+3. No browser/visual check in a real browser or at 320 px was performed in this environment; responsive behaviour relies on Tailwind responsive classes (mobile-first, 44 px targets) and jsdom tests.
+4. The ensure query caches per session (`staleTime: Infinity`); a book deleted server-side mid-session (not possible in V1) would not be re-ensured until reload.
+5. `tsconfig`/build unchanged; dev-dependency vulnerabilities from earlier milestones are unchanged.
+
+#### Tests (134 new; 235 total)
+`books.test.ts` 24 · `utils.test.ts` 30 · `MonthlyBooks.test.tsx` 21 · `ManagedBooks.test.tsx` 42 · `BookDetails.test.tsx` 10 · `BooksRouting.test.tsx` 7.
+
+#### Local verification
+- `tsc --noEmit` → 0 errors · `eslint .` → 0 warnings/errors · `vitest run` → **235 passed** · `vite build` → 484 kB JS (gzip 150 kB) + 16.9 kB CSS · `git diff --check` → clean.
+
+#### FE-004 file inventory
+New: `frontend/src/services/api/{books.ts,errors.ts,books.test.ts}`, `frontend/src/components/ui/{Modal.tsx,Toast.tsx,StateViews.tsx,styles.ts}`, `frontend/src/features/books/**` (pages, panels, 7 components, hook, utils, types, test utils, 5 test files).
+Modified: `frontend/src/app/router/index.tsx`, `frontend/src/components/layout/AppShell.tsx`, `frontend/src/services/api/index.ts`, `frontend/src/types/index.ts`, `docs/development/{IMPLEMENTATION_BACKLOG,PROJECT_STATUS,HANDOFF}.md`, `CHANGELOG.md` (repo root; there is no `docs/development/CHANGELOG.md`).
 
 ### FE-003 summary
 

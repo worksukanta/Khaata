@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### FE-004 — Books management
+- **Routes** (`src/app/router/index.tsx`): `/books` → `BooksPage`, `/books/:id` → `BookDetailsPage` (replacing placeholders); both remain inside `PrivateRoute` + `AppShell`.
+- **API service** (`src/services/api/books.ts`): `listBooks` (`type`, `search`, `is_archived`, `ordering`, `page`; only supplied filters are sent; AbortSignal forwarded), `createBook`, `ensureMonthlyBook` (`POST /books/monthly/{year}/{month}/ensure/`; 201 → `created: true`), `getBook`, `updateBook`, `archiveBook`, `restoreBook`. No delete operation. The un-archive endpoint is `POST /books/{id}/restore/` — the contract, OpenAPI and backend define `restore`; there is no `/unarchive/` route. `src/services/api/errors.ts` adds safe ApiError message helpers (network failures get an offline message; raw server text is not shown).
+- **Types** (`src/types/index.ts`): `ManagedBookType`, `BookOrdering`, `BookListParams`, `CreateBookPayload`, `UpdateBookPayload`, `EnsureMonthlyBookResult`.
+- **Screens** (`src/features/books/`): `BooksPage` (type navigation with a description of each type), `MonthlyBooksPanel`, `ManagedBooksPanel` (Event and General), `BookDetailsPage` (metadata only — no transactions/totals/budgets).
+- **Components**: `BookCard`, `BookForm`, `BookFormDialog`, `ArchiveConfirmationDialog`, `BookTypeTabs`, `MonthNavigator`, `Pagination`. Shared UI in `src/components/ui/`: `Modal` (focus trap, Escape/backdrop close unless busy), `Toast`/`ToastProvider` (mounted in `AppShell`, `aria-live`), `StateViews` (loading/empty/error), `styles`.
+- **Monthly ensure**: selected month lives in the URL (`?tab=monthly&year=&month=`), defaults to the current month in the user's timezone; the book is displayed only after the ensure call succeeds. Implemented as a TanStack Query keyed `['book-ensure', year, month]` (`staleTime: Infinity`) so re-renders and concurrent consumers share one in-flight POST, and revisiting a month does not re-POST. December → January and January → December roll the year. Navigation is limited to years 2000–2200 (endpoint range).
+- **Forms**: name required and non-blank after trim; 150/5000 character limits (from `openapi.yaml`); EVENT end date must not precede start date; GENERAL has no date fields; backend `validation_error` details are mapped to fields (unmapped keys such as `detail` show as a form-level alert); input preserved on failure; submit disabled while saving; dialog closes only after success.
+- **Archive/restore**: archive requires confirmation; success toast only after the server confirms; failure keeps the dialog open with the error. Archived books are read-only (only Restore); archived books are reached via the "Show archived" filter (`is_archived=true`). MONTHLY books never show create/edit/archive/restore controls.
+- **TanStack Query**: keys `['books','list',params]`, `['books','detail',id]`, `['book-ensure',y,m]`. Mutations write the returned book into the detail cache and invalidate `['books','list']`.
+- **Tests**: 134 new (`books.test.ts` 24, `utils.test.ts` 30, `MonthlyBooks.test.tsx` 21, `ManagedBooks.test.tsx` 42, `BookDetails.test.tsx` 10, `BooksRouting.test.tsx` 7).
+- **CI:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **235/235 passed** (101 existing + 134 new); `vite build` → 484 kB JS (gzip: 150 kB) + 16.9 kB CSS (gzip: 4.2 kB); `git diff --check` clean.
+- **No backend changes.** No API contract changes. No new npm dependencies.
+
+
 ### FE-003 — Application layout and navigation
 - **Topbar** (`src/components/layout/Topbar.tsx`): sticky top header (h-14) present on all authenticated routes. Renders the hamburger button (mobile only, `lg:hidden`) and `UserMenu` on the right. Accessible: `role="banner"`, hamburger has `aria-label="Open navigation menu"`.
 - **UserMenu** (`src/components/layout/UserMenu.tsx`): avatar button showing two-letter initials (derived from `display_name`; falls back to email when blank). Dropdown (`role="menu"`) shows display name, email, and a Sign out `menuitem`. Closes on Escape, closes on click-outside. Logout uses `useAuth().logout()`; loading/disabled state during sign-out; inline error message on failure without pretending success. Returns `null` when no user (unauthenticated guard not reached).

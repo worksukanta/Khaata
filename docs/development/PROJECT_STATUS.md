@@ -1,7 +1,7 @@
 # Khaata Project Status
 
-**Last updated:** 2026-10-31
-**Current phase:** FE-003 (Application layout and navigation) implemented in the working tree (uncommitted; user handles all Git operations). BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BOOT-002, BE-007, BE-008, BE-009, FE-001, FE-002, and FE-003 are all implemented but not yet merged.
+**Last updated:** 2026-11-01
+**Current phase:** FE-004 (Books management) implemented in the working tree (uncommitted; user handles all Git operations). BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BOOT-002, BE-007, BE-008, BE-009, FE-001, FE-002, FE-003, and FE-004 are all implemented; FE-001–FE-003 are committed on the working branch history (`ee0cadd`, `d652f87`, `6f65a00`); FE-004 is not yet committed.
 
 ## Approved baselines
 
@@ -23,11 +23,13 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. BOOT-002, BE-007, BE-008, BE-009, FE-001, FE-002, and FE-003 are all implemented (pending user review/merge). Next: `FE-004` (Books screens — monthly/event/general list, month navigation, event/general create/edit/archive) after FE-003 is reviewed and merged. **Manual action required**: enable branch protection on `main` in the GitHub repository settings; add the frontend CI job `Frontend (Node 22)` as a required status check alongside the backend jobs.
+Step 5 — vertical-slice implementation continues. FE-004 (Books management) is implemented (pending user review/commit). Next: `FE-005` (Quick transaction entry and history) after FE-004 is reviewed and merged. **Manual action required**: enable branch protection on `main` in the GitHub repository settings; add the frontend CI job `Frontend (Node 22)` as a required status check alongside the backend jobs.
 
 ## Last known verification
 
-FE-003: React 19 + TypeScript 5.8 + Vite 6 + Tailwind 3.4 + React Router 7 + Axios 1.9 + TanStack Query 5 + Vitest 5; `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **101 passed** (5 smoke + 2 client + 12 AuthContext + 11 RouteGuards + 17 LoginPage + 21 RegisterPage + 33 AppShell/layout; jsdom); `vite build` → 441 kB JS (gzip: 139 kB) + 13.1 kB CSS (gzip: 3.4 kB); no secrets committed. 12 moderate dev-dependency vulnerabilities in ESLint/minimatch (no upstream fix available; dev-only; within the 90-day remediation window). No backend files changed. No new npm dependencies added.
+FE-004: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **235 passed** (101 pre-existing + 134 new: 24 books service, 30 books utils, 21 monthly, 42 event/general, 10 details, 7 routing; jsdom); `vite build` → 484 kB JS (gzip: 150 kB) + 16.9 kB CSS (gzip: 4.2 kB); `git diff --check` → clean. No backend or API-contract files changed. No new npm dependencies.
+
+Previous (FE-003): React 19 + TypeScript 5.8 + Vite 6 + Tailwind 3.4 + React Router 7 + Axios 1.9 + TanStack Query 5 + Vitest 5; `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **101 passed** (5 smoke + 2 client + 12 AuthContext + 11 RouteGuards + 17 LoginPage + 21 RegisterPage + 33 AppShell/layout; jsdom); `vite build` → 441 kB JS (gzip: 139 kB) + 13.1 kB CSS (gzip: 3.4 kB); no secrets committed. 12 moderate dev-dependency vulnerabilities in ESLint/minimatch (no upstream fix available; dev-only; within the 90-day remediation window). No backend files changed. No new npm dependencies added.
 
 Previous (FE-002): `vitest run` → **68 passed**; `vite build` → 432 kB JS (gzip: 137 kB) + 11.5 kB CSS (gzip: 3.1 kB).
 

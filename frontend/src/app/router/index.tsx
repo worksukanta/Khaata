@@ -15,8 +15,9 @@
  *  /reports              → Reports — UX-10  [protected]
  *  /settings             → Settings — UX-11 [protected]
  *
- * FE-002: Login and Register are real pages; all other protected routes still
- * render placeholder pages (implemented in FE-003+).  Route guards are active.
+ * FE-002: Login and Register are real pages; route guards are active.
+ * FE-004: /books and /books/:id are real pages; other protected routes still
+ * render placeholder pages (implemented in later milestones).
  */
 
 import { createBrowserRouter } from 'react-router-dom'
@@ -24,6 +25,8 @@ import AppShell from '@/components/layout/AppShell'
 import HomePage from '@/features/home/HomePage'
 import NotFoundPage from '@/components/layout/NotFoundPage'
 import PlaceholderPage from '@/components/layout/PlaceholderPage'
+import BooksPage from '@/features/books/BooksPage'
+import BookDetailsPage from '@/features/books/BookDetailsPage'
 import LoginPage from '@/features/auth/LoginPage'
 import RegisterPage from '@/features/auth/RegisterPage'
 import PrivateRoute from '@/features/auth/PrivateRoute'
@@ -47,8 +50,8 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <HomePage /> },
-          { path: 'books', element: <PlaceholderPage title="Books" /> },
-          { path: 'books/:id', element: <PlaceholderPage title="Book Detail" /> },
+          { path: 'books', element: <BooksPage /> },
+          { path: 'books/:id', element: <BookDetailsPage /> },
           { path: 'transactions/new', element: <PlaceholderPage title="Add Transaction" /> },
           { path: 'transactions/:id/edit', element: <PlaceholderPage title="Edit Transaction" /> },
           { path: 'budgets', element: <PlaceholderPage title="Budgets" /> },

@@ -138,22 +138,25 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Router restructured: public-only group for `/login` and `/register`; PrivateRoute guard wraps all app routes; 404 catch-all at top level.
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **68/68 passed**; `vite build` → succeeds; no tokens in localStorage; errors and loading states are accessible.
 
-### FE-003 — Books screens
-- Status: TODO
-- Monthly/event/general lists and event/general create/edit/archive.
-- Acceptance: month navigation and empty/error states work.
+### FE-004 — Books screens
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Numbering note: this entry was previously labelled "FE-003 — Books screens"; FE-003 became the application layout task, so Books is FE-004 and the later FE entries below are shifted by one (Transactions FE-005, Dashboard FE-006, Reports FE-007).
+- Implemented `/books` (Monthly / Event / General type navigation, `?tab=`) and `/books/:id` (Books-related fields only). Monthly: month navigator (current month in the user's timezone, prev/next with Dec↔Jan year rollover) that calls `POST /books/monthly/{year}/{month}/ensure/` through a de-duplicated query before the book is shown. Event/General: list, search, archived filter, create, edit, archive (with confirmation), restore, pagination. No MONTHLY create/edit/archive/restore controls.
+- API: `GET/POST /books/`, `POST /books/monthly/{year}/{month}/ensure/`, `GET/PATCH /books/{id}/`, `POST /books/{id}/archive/`, `POST /books/{id}/restore/`. The un-archive endpoint is `/restore/` (contract, OpenAPI and backend); there is no `/unarchive/` route.
+- New shared UI: `Modal`, `ToastProvider` (mounted in `AppShell`), `LoadingSkeleton`/`EmptyState`/`ErrorState`, button/input class helpers. No new npm dependencies; no backend or contract changes.
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **235/235 passed** (101 pre-existing + 134 new); `vite build` → succeeds; `git diff --check` → clean.
 
-### FE-004 — Quick transaction entry and history
-- Status: TODO
+### FE-005 — Quick transaction entry and history
+- Status: TODO (not started)
 - Add/edit form, filters, pagination, transaction details.
 - Acceptance: mobile form usable at 320px width; failed save preserves values.
 
-### FE-005 — Dashboard and budget planner
+### FE-006 — Dashboard and budget planner
 - Status: TODO
 - Combined monthly totals, book-type breakdown, category charts, budget progress.
 - Acceptance: display matches API totals; warnings are understandable.
 
-### FE-006 — Reports, search and CSV
+### FE-007 — Reports, search and CSV
 - Status: TODO
 - Reports and filtered export.
 - Acceptance: filters compose correctly; export respects active user and selected filters.
