@@ -29,3 +29,7 @@ Thumbs.db
 *.log
 secrets/
 private/
+
+
+# TypeScript incremental build metadata
+*.tsbuildinfo

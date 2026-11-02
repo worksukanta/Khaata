@@ -54,6 +54,29 @@ export function useBooksList(params: BookListParams) {
   })
 }
 
+async function fetchAllBooks(
+  params: Omit<BookListParams, 'page'> = {},
+  signal?: AbortSignal,
+): Promise<Book[]> {
+  const all: Book[] = []
+  let page = 1
+  while (true) {
+    const response = await listBooks({ ...params, page }, signal)
+    all.push(...(response?.results ?? []))
+    if (!response?.next) break
+    page += 1
+  }
+  return all
+}
+
+export function useAllBooks(params: Omit<BookListParams, 'page'>) {
+  return useQuery({
+    queryKey: bookKeys.list({ ...params, page: 'all' as unknown as number }),
+    queryFn: ({ signal }) => fetchAllBooks(params, signal),
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useBook(id: string | undefined) {
   return useQuery({
     queryKey: bookKeys.detail(id ?? ''),

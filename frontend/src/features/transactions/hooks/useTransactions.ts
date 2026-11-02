@@ -9,6 +9,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { bookKeys } from '@/features/books/hooks/useBooks'
+import { budgetKeys } from '@/features/budgets/hooks/useBudgets'
+import { reportKeys } from '@/features/dashboard/hooks/useReports'
 import {
   createTransaction,
   deleteTransaction,
@@ -47,39 +49,53 @@ export function useTransaction(id: string | undefined) {
   })
 }
 
+/**
+ * Spending, totals and budget figures are derived from active transactions on
+ * the server, so every transaction write also invalidates budgets and reports.
+ */
+function useInvalidateDerived() {
+  const queryClient = useQueryClient()
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: transactionKeys.lists() })
+    void queryClient.invalidateQueries({ queryKey: bookKeys.all })
+    void queryClient.invalidateQueries({ queryKey: budgetKeys.all })
+    void queryClient.invalidateQueries({ queryKey: reportKeys.all })
+  }
+}
+
 export function useCreateTransaction() {
   const queryClient = useQueryClient()
+  const invalidateDerived = useInvalidateDerived()
   return useMutation({
     mutationFn: (payload: CreateTransactionPayload) => createTransaction(payload),
     onSuccess: (txn: Transaction) => {
       queryClient.setQueryData(transactionKeys.detail(txn.id), txn)
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: bookKeys.all })
+      invalidateDerived()
     },
   })
 }
 
 export function useUpdateTransaction() {
   const queryClient = useQueryClient()
+  const invalidateDerived = useInvalidateDerived()
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateTransactionPayload }) =>
       updateTransaction(id, payload),
     onSuccess: (txn: Transaction) => {
       queryClient.setQueryData(transactionKeys.detail(txn.id), txn)
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: bookKeys.all })
+      invalidateDerived()
     },
   })
 }
 
 export function useDeleteTransaction() {
   const queryClient = useQueryClient()
+  const invalidateDerived = useInvalidateDerived()
   return useMutation({
     mutationFn: (id: string) => deleteTransaction(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: transactionKeys.detail(id) })
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: bookKeys.all })
+      invalidateDerived()
     },
   })
 }

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### FE-006 — Dashboard and budget planner
+- **Routes** (`src/app/router/index.tsx`): `/` → live `HomePage` dashboard (UX-03), `/budgets` → `BudgetsPage` (UX-08), `/budgets/:id` → `BudgetDetailsPage` (UX-09), all inside `PrivateRoute` + `AppShell`. Selected month is kept in the URL (`?year=&month=`).
+- **API services** (`src/services/api/`): `reports.ts` (`GET /api/v1/reports/monthly/`, `GET /api/v1/reports/budget-utilization/`), `budgets.ts` (`GET/POST /api/v1/budgets/`, `GET/PATCH /api/v1/budgets/{id}/`, `PUT /api/v1/budgets/{id}/allocations/`); re-exported via `index.ts`. No budget DELETE exists in the backend.
+- **Types** (`src/types/index.ts`): `Budget`, `BudgetAllocation`, `BudgetStatus`, `BudgetListParams`, `CreateBudgetPayload`, `UpdateBudgetPayload`, `AllocationInput`, `MonthlyReport` and related report types.
+- **Dashboard** (`src/features/home`, `src/features/dashboard`): income, expense and signed net cash flow KPIs, monthly budget card (incl. `NOT_SET` call to action), book-type breakdown table, category breakdown (text list with CSS bars; no chart dependency), recent transactions with book labels, month navigator, loading/empty/error-with-retry states. All figures are the server's decimal strings.
+- **Budget Planner** (`src/features/budgets`): monthly budget view/create/edit, event budget list/create, budget details with per-category progress, unallocated and uncategorised spending, and an allocation editor (atomic `PUT`) with exact integer-cent live total and server-error mapping. Status badges use text and glyph as well as colour; overspending is never blocked.
+- **Cache**: new `reportKeys` / `budgetKeys`; budget mutations invalidate `['budgets','list']` and `['reports']`; transaction create/update/delete now also invalidate `['budgets']` and `['reports']`.
+- **Fix**: page headers use `<div>` instead of `<header>` to avoid a second `banner` landmark inside the app shell.
+- **Tests**: 108 new tests across 7 files (reports service 5, budgets service 12, budget utils 20, dashboard 15, budgets page 22, budget details 22, routing/integration/invalidation 12); `src/test/smoke.test.tsx` adapted for the data-driven `HomePage`. Total frontend suite: **389/389 passed**.
+- **CI / Quality gates:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **389/389 passed**; `vite build` → 547 kB JS (gzip: 164 kB) + 20.2 kB CSS (gzip: 4.7 kB); `git diff --check` clean.
+- **No backend changes.** No API contract changes. No new npm dependencies.
+
 ### FE-005 — Transactions management
 - **Routes** (`src/app/router/index.tsx`): `/transactions/new` → `TransactionCreatePage` (UX-06), `/transactions/:id/edit` and `/transactions/:id` → `TransactionEditPage` (UX-07); `/books/:id` updated to embed `TransactionList` for viewing transaction history with filtering and pagination.
 - **API services** (`src/services/api/`):

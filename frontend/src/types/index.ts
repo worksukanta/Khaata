@@ -187,3 +187,113 @@ export interface PaymentMethodListParams {
 
 export type BudgetScope = 'MONTHLY_OVERALL' | 'EVENT'
 export type BudgetStatus = 'ON_TRACK' | 'NEAR_LIMIT' | 'OVER_BUDGET' | 'UNBUDGETED_SPENDING' | 'NOT_SET'
+/** Statuses produced by the budget endpoints (`NOT_SET` is report-only). */
+export type BudgetFigureStatus = Exclude<BudgetStatus, 'NOT_SET'>
+
+/** One category allocation inside a Budget (openapi.yaml BudgetAllocation). */
+export interface BudgetAllocation {
+  category: { id: string; name: string; type: 'EXPENSE'; is_active: boolean }
+  amount: string
+  spent: string
+  /** Signed decimal string; negative when overspent. */
+  remaining: string
+  utilization_percent: string | null
+  status: BudgetFigureStatus
+}
+
+/** Budget with server-derived figures (openapi.yaml Budget). Money values are decimal strings. */
+export interface Budget {
+  id: string
+  scope: BudgetScope
+  book_id: string | null
+  year: number | null
+  month: number | null
+  total_limit: string
+  allocations: BudgetAllocation[]
+  allocated_total: string
+  unallocated: string
+  spent: string
+  /** Signed decimal string; negative when overspent. */
+  remaining: string
+  /** `null` only for UNBUDGETED_SPENDING. */
+  utilization_percent: string | null
+  status: BudgetFigureStatus
+  unallocated_spent: string
+  uncategorised_spent: string
+  created_at: string
+  updated_at: string
+}
+
+/** Query parameters supported by GET /budgets/. */
+export interface BudgetListParams {
+  scope?: BudgetScope
+  year?: number
+  month?: number
+  book_id?: string
+  page?: number
+}
+
+/** Body for POST /budgets/. */
+export type CreateBudgetPayload =
+  | { scope: 'MONTHLY_OVERALL'; year: number; month: number; total_limit: string }
+  | { scope: 'EVENT'; book_id: string; total_limit: string }
+
+/** Body for PATCH /budgets/{id}/ (only the limit is edited by the UI). */
+export interface UpdateBudgetPayload {
+  total_limit?: string
+}
+
+/** One item of PUT /budgets/{id}/allocations/. */
+export interface AllocationInput {
+  category_id: string
+  amount: string
+}
+
+// ---------------------------------------------------------------------------
+// Report types (openapi.yaml MonthlyReport / BudgetUtilizationReport)
+// ---------------------------------------------------------------------------
+
+export interface ReportPeriod {
+  year: number
+  month: number
+}
+
+export interface BookTypeBreakdownItem {
+  book_type: BookType
+  income: string
+  expenses: string
+}
+
+export interface CategoryBreakdownItem {
+  /** `null` for uncategorised expenses. */
+  category_id: string | null
+  category_name: string
+  total: string
+}
+
+/** Monthly overall budget summary; every figure is null when `status` is NOT_SET. */
+export interface MonthlyReportBudget {
+  total_limit: string | null
+  spent: string | null
+  remaining: string | null
+  utilization_percent: string | null
+  status: BudgetStatus
+}
+
+export interface MonthlyReport {
+  period: ReportPeriod
+  currency: 'INR'
+  income_total: string
+  expense_total: string
+  /** Signed decimal string; negative when expenses exceed income. */
+  net_cash_flow: string
+  book_type_breakdown: BookTypeBreakdownItem[]
+  category_breakdown: CategoryBreakdownItem[]
+  budget: MonthlyReportBudget
+  recent_transactions: Transaction[]
+}
+
+export interface BudgetUtilizationReport {
+  period: ReportPeriod
+  budget: Budget | null
+}

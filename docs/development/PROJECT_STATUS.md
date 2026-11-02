@@ -1,7 +1,7 @@
 # Khaata Project Status
 
 **Last updated:** 2026-11-02
-**Current phase:** FE-005 (Transactions management) implemented in the working tree (uncommitted; user handles all Git operations). BE-001–BE-006 are committed on `main` (latest `153adef`, BE-006). BOOT-002, BE-007, BE-008, BE-009, FE-001, FE-002, FE-003, FE-004, and FE-005 are all implemented; FE-001–FE-003 are committed on the working branch history (`ee0cadd`, `d652f87`, `6f65a00`); FE-004 and FE-005 are not yet committed.
+**Current phase:** FE-006 (Dashboard and budget planner) implemented in the working tree (uncommitted; user handles all Git operations). BE-001–BE-009, BOOT-001, BOOT-002, and FE-001–FE-005 are committed on `main` (latest `f1d4210`, FE-005). FE-006 is implemented in the working tree, awaiting final user approval and commit.
 
 ## Approved baselines
 
@@ -23,10 +23,13 @@
 
 ## Next milestone
 
-Step 5 — vertical-slice implementation continues. FE-005 (Transactions management) is implemented (pending user review/commit). Next: `FE-006` (Dashboard and budget planner). **Manual action required**: enable branch protection on `main` in the GitHub repository settings; add the frontend CI job `Frontend (Node 22)` as a required status check alongside the backend jobs.
+Step 5 — vertical-slice implementation continues. FE-006 (Dashboard and budget planner) is implemented (pending user review/commit). Next: `FE-007` (Reports, search and CSV). **Manual action required**: enable branch protection on `main` in the GitHub repository settings; add the frontend CI job `Frontend (Node 22)` as a required status check alongside the backend jobs.
 
 ## Last known verification
 
+FE-006: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **389 passed** (281 pre-existing + 108 new: 5 reports service, 12 budgets service, 20 budget utils, 15 dashboard, 22 budgets page, 22 budget details/allocation editor, 12 routing/integration/invalidation; jsdom; the existing `smoke.test.tsx` was adapted to wrap `HomePage` in a `QueryClientProvider` and mock the reports/books APIs); `vite build` → 547 kB JS (gzip: 164 kB) + 20.2 kB CSS (gzip: 4.7 kB; Vite chunk-size advisory only); `git diff --check` → clean. Multi-page event book options and recent-transaction book label pagination verified with automated tests. No backend or API-contract files changed. No new npm dependencies.
+
+Previous (FE-005):
 FE-005: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **281 passed** (235 pre-existing + 46 new: 6 transactions service, 4 categories/payment-methods service, 13 utils, 5 form, 6 create page, 8 edit page, 4 history list; jsdom); `vite build` → 514 kB JS (gzip: 157 kB) + 18.7 kB CSS (gzip: 4.5 kB); `git diff --check` → clean. No backend or API-contract files changed. No new npm dependencies.
 
 Previous (FE-004): `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **235 passed** (101 pre-existing + 134 new: 24 books service, 30 books utils, 21 monthly, 42 event/general, 10 details, 7 routing; jsdom); `vite build` → 484 kB JS (gzip: 150 kB) + 16.9 kB CSS (gzip: 4.2 kB); `git diff --check` → clean. No backend or API-contract files changed. No new npm dependencies.

@@ -6,14 +6,30 @@
  * from the API and remain deterministic.
  */
 
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { vi } from 'vitest'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import HomePage from '@/features/home/HomePage'
 import NotFoundPage from '@/components/layout/NotFoundPage'
 import PlaceholderPage from '@/components/layout/PlaceholderPage'
+
+// FE-006: HomePage is the live dashboard and uses TanStack Query; the API
+// modules are mocked so these smoke tests stay offline and deterministic.
+vi.mock('@/services/api/reports', () => ({
+  getMonthlyReport: vi.fn(() => new Promise(() => undefined)),
+  getBudgetUtilization: vi.fn(() => new Promise(() => undefined)),
+}))
+vi.mock('@/services/api/books', () => ({
+  listBooks: vi.fn(() => new Promise(() => undefined)),
+}))
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 // ---------------------------------------------------------------------------
 // Mock AuthContext so AppShell/layout components don't error when rendered
@@ -43,9 +59,9 @@ describe('Application smoke test', () => {
       </MemoryRouter>,
     )
 
-    // The heading should be present
+    // The dashboard heading should be present
     expect(
-      screen.getByRole('heading', { name: /welcome to khaata/i }),
+      screen.getByRole('heading', { level: 1, name: /^home$/i }),
     ).toBeInTheDocument()
   })
 

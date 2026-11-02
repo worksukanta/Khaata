@@ -119,7 +119,7 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 ## Milestone M2 — Frontend foundation
 
 ### FE-001 — React/Vite/TypeScript setup
-- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Status: DONE (committed in `ee0cadd`)
 - Created `frontend/` with React 19 + TypeScript 5.8 (strict) + Vite 6 + Tailwind CSS 3.4 + React Router 7 + Axios 1.9 + Vitest 5.
 - Architecture: `src/app/` (router, providers), `src/assets/` (global CSS), `src/components/layout/` (AppShell, BottomNav, Sidebar, NotFoundPage, PlaceholderPage), `src/features/home/`, `src/services/api/` (typed Axios client + auth service stubs), `src/types/` (domain types aligned with API_CONTRACT.md), `src/test/` (smoke + unit tests).
 - Environment: `frontend/.env.example` documents `VITE_API_BASE_URL`; Vite dev server proxies `/api/*` to Django backend.
@@ -127,19 +127,19 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings; `vitest run` → 6/6 passed; `vite build` → succeeds.
 
 ### FE-003 — Application layout and navigation
-- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Status: DONE (committed in `6f65a00`)
 - Implemented `Topbar` (sticky header, hamburger trigger, user menu); `UserMenu` (initials avatar, dropdown, logout with error handling); `MobileDrawer` (slide-in dialog, Escape/backdrop/route-change close, body scroll lock); `AppShell` updated to wire Topbar + MobileDrawer.
 - No new npm dependencies. No backend changes. All FE-002 tests continue passing (101 total).
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **101/101 passed**; `vite build` → succeeds.
 
 ### FE-002 — Auth screens and API client
-- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Status: DONE (committed in `d652f87`)
 - Implemented `AuthProvider` + `useAuth` hook (session restoration, login, register, logout); `PrivateRoute` + `PublicOnlyRoute` guards; `LoginPage` + `RegisterPage` functional screens; `register()` added to auth service; `@tanstack/react-query` added with shared `QueryClient`.
 - Router restructured: public-only group for `/login` and `/register`; PrivateRoute guard wraps all app routes; 404 catch-all at top level.
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **68/68 passed**; `vite build` → succeeds; no tokens in localStorage; errors and loading states are accessible.
 
 ### FE-004 — Books screens
-- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Status: DONE (committed in `c9ceae4`)
 - Numbering note: this entry was previously labelled "FE-003 — Books screens"; FE-003 became the application layout task, so Books is FE-004 and the later FE entries below are shifted by one (Transactions FE-005, Dashboard FE-006, Reports FE-007).
 - Implemented `/books` (Monthly / Event / General type navigation, `?tab=`) and `/books/:id` (Books-related fields only). Monthly: month navigator (current month in the user's timezone, prev/next with Dec↔Jan year rollover) that calls `POST /books/monthly/{year}/{month}/ensure/` through a de-duplicated query before the book is shown. Event/General: list, search, archived filter, create, edit, archive (with confirmation), restore, pagination. No MONTHLY create/edit/archive/restore controls.
 - API: `GET/POST /books/`, `POST /books/monthly/{year}/{month}/ensure/`, `GET/PATCH /books/{id}/`, `POST /books/{id}/archive/`, `POST /books/{id}/restore/`. The un-archive endpoint is `/restore/` (contract, OpenAPI and backend); there is no `/unarchive/` route.
@@ -147,7 +147,7 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **235/235 passed** (101 pre-existing + 134 new); `vite build` → succeeds; `git diff --check` → clean.
 
 ### FE-005 — Quick transaction entry and history
-- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Status: DONE (committed in `f1d4210`)
 - Implemented `/transactions/new` (`TransactionCreatePage`, UX-06) and `/transactions/:id/edit` (`TransactionEditPage`, UX-07). Updated `/books/:id` (`BookDetailsPage`, UX-05) to embed `TransactionList` with filtering and pagination.
 - API service: `src/services/api/transactions.ts` (`GET/POST /transactions/`, `GET/PATCH/DELETE /transactions/{id}/`), `src/services/api/categories.ts` (`GET /categories/`), `src/services/api/paymentMethods.ts` (`GET /payment-methods/`).
 - Financial rules: decimal-safe monetary inputs and formatting without floating point; positive amount validation; category type matching; historical inactive references preserved on edit; archived books read-only; monthly date changes submitted via PATCH letting backend handle atomic book reassignment; soft deletion via DELETE endpoint with confirmation modal.
@@ -155,9 +155,14 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **281/281 passed** (46 new tests); `vite build` → succeeds; `git diff --check` → clean.
 
 ### FE-006 — Dashboard and budget planner
-- Status: TODO
-- Combined monthly totals, book-type breakdown, category charts, budget progress.
-- Acceptance: display matches API totals; warnings are understandable.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting final user approval and commit)
+- Implemented `/` (`HomePage`, UX-03 combined monthly dashboard), `/budgets` (`BudgetsPage`, UX-08) and `/budgets/:id` (`BudgetDetailsPage`, UX-09). The selected month is held in the URL (`?year=&month=`) on `/` and `/budgets`, defaulting to the current month in the user's timezone.
+- API services: `src/services/api/reports.ts` (`GET /reports/monthly/`, `GET /reports/budget-utilization/`), `src/services/api/budgets.ts` (`GET/POST /budgets/`, `GET/PATCH /budgets/{id}/`, `PUT /budgets/{id}/allocations/`). The backend defines no budget DELETE, so none is offered.
+- Server values are the source of truth: totals, `spent`, `remaining`, `utilization_percent` and `status` are rendered as returned. BigInt integer cents are used only for form validation, the live allocation preview and bar widths. Overspending is never blocked; `OVER_BUDGET` shows "₹X over budget", `UNBUDGETED_SPENDING` shows no percentage, `NOT_SET` shows a "Set a budget" call to action.
+- The "category chart" is an accessible text list with CSS bars (no chart dependency is installed or needed).
+- Transaction create/update/delete now also invalidate `['budgets']` and `['reports']`; budget mutations invalidate `['budgets','list']` and `['reports']`.
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **389/389 passed** (108 new tests); `vite build` → succeeds; `git diff --check` → clean. Multi-page event book candidate options and recent-transaction book label pagination verified with automated tests.
+- Acceptance (original): display matches API totals; warnings are understandable.
 
 ### FE-007 — Reports, search and CSV
 - Status: TODO

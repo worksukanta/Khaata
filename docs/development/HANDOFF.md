@@ -1,10 +1,65 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-023-FE-005` (follows `KH-CP-022-FE-004`)
+`KH-CP-024-FE-006` (follows `KH-CP-023-FE-005`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007, BE-008, BE-009, BOOT-002, FE-001, FE-002, FE-003, FE-004, and FE-005 (Transactions management) are implemented; the user handles all Git operations — none were performed by the agent. FE-004 and FE-005 are in the working tree, uncommitted, awaiting user review/commit. **Next task: FE-006 — Dashboard and budget planner (not started).**
+Steps 1–4 approved. BOOT-001–BOOT-002, BE-001–BE-009, and FE-001–FE-005 are committed on `main` by the user (latest `f1d4210`, FE-005). FE-006 is implemented in the working tree, uncommitted, awaiting final user approval and commit. **Next task: FE-007 — Reports, search and CSV (not started).**
+
+### FE-006 summary
+
+#### What was built
+- Live combined monthly dashboard at `/` (UX-03) and the Budget Planner at `/budgets` (UX-08) and `/budgets/:id` (UX-09). **No backend, API contract or OpenAPI changes. No new npm dependencies.**
+- Selected month is stored in the URL (`?year=&month=`) on `/` and `/budgets` (default: current month in the user's timezone); Dec→Jan rolls the year.
+
+#### API used (verified against `openapi.yaml`, `API_CONTRACT.md` §6–7 and the BE-006/BE-007 code)
+- `GET /reports/monthly/?year=&month=` (dashboard), `GET /reports/budget-utilization/?year=&month=` (monthly budget on `/budgets`; `budget: null` when unset).
+- `GET/POST /budgets/` (event budgets: `scope=EVENT&page=`; create MONTHLY_OVERALL `{scope,year,month,total_limit}` or EVENT `{scope,book_id,total_limit}`), `GET/PATCH /budgets/{id}/` (`total_limit`), `PUT /budgets/{id}/allocations/` (`{allocations:[{category_id,amount}]}`, atomic full replacement; `[]` clears).
+- `GET /books/` (event-book names/options and recent-transaction labels), `GET /categories/?type=EXPENSE&is_active=true`.
+- `GET /reports/books/{id}/` was not needed (book detail stays FE-004/FE-005 scope).
+
+#### File layout (`frontend/src/`)
+```
+services/api/{reports,budgets}.ts + {reports,budgets}.test.ts
+types/index.ts                         (Budget, BudgetAllocation, report types, payloads)
+features/home/HomePage.tsx             (dashboard)
+features/dashboard/
+  hooks/useReports.ts                  (reportKeys, useMonthlyReport, useBudgetUtilization)
+  components/{KpiCard,BookTypeBreakdown,CategoryBreakdown,RecentTransactions,DashboardBudgetCard}.tsx
+  Dashboard.test.tsx
+features/budgets/
+  BudgetsPage.tsx, BudgetDetailsPage.tsx
+  components/{BudgetStatusBadge,BudgetProgress,BudgetLimitDialog,AllocationProgressList,AllocationEditor}.tsx
+  hooks/useBudgets.ts                  (budgetKeys, list/detail queries, create/update/replace mutations)
+  utils.ts, types.ts, testUtils.tsx
+  utils.test.ts, BudgetsPage.test.tsx, BudgetDetailsPage.test.tsx, BudgetsRouting.test.tsx
+features/transactions/hooks/useTransactions.ts  (also invalidates ['budgets'] and ['reports'])
+app/router/index.tsx                   (/budgets, /budgets/:id wired)
+test/smoke.test.tsx                    (adapted: HomePage now uses TanStack Query)
+```
+
+#### Financial and domain rules
+- Totals, `spent`, `remaining`, `utilization_percent` and `status` are rendered exactly as the server returned them; nothing is recalculated. BigInt integer cents are used only for form validation, the live allocation total/unallocated preview and visual bar widths. No floating point for money.
+- Overspending is never blocked. `OVER_BUDGET` shows the absolute overspend ("₹X over budget") and the real percentage (bar capped at 100%); `UNBUDGETED_SPENDING` (zero limit with spending, `utilization_percent` null) shows no percentage; zero limit with zero spending is `ON_TRACK`; report-only `NOT_SET` shows a "Set a budget" CTA. Status is conveyed by text and glyph as well as colour.
+- Monthly budgets cover expenses from all books by date; event budgets cover their event book on any date (explanatory copy on both pages).
+- Allocation editor: category required and unique, amount ≥ 0 with ≤ 2 dp, total ≤ limit (equal allowed). This is a convenience only; server per-item (`allocations.{index}.category_id|amount`) and total-limit (`allocations`) errors are mapped and entered values are preserved on failure. Existing inactive categories are labelled "(Inactive)" and cannot be newly chosen.
+- The "category chart" is an accessible text list with CSS bars (no chart dependency is installed or required).
+
+#### Cache behaviour
+- `reportKeys`: `['reports','monthly',y,m]`, `['reports','budget-utilization',y,m]`. `budgetKeys`: `['budgets','list',params]`, `['budgets','detail',id]`.
+- Budget mutations write the returned budget to its detail entry and invalidate `['budgets','list']` and `['reports']`. Transaction create/update/delete invalidate `['budgets']` and `['reports']` as well.
+
+#### Decisions / assumptions
+- Event-book options and recent-transaction book names are fetched using `useAllBooks` (which retrieves pages sequentially using standard `page` parameters until `next` is null); if any lookup fails or an unknown ID is present, the row falls back to the generic "Open book" link.
+- Event-budget candidates are non-archived event books that have no budget on the loaded page of event budgets; the server remains authoritative for duplicates.
+- Page `<header>` elements were replaced with `<div>`: a header inside `<main>` of the app shell was exposed as a second `banner` landmark.
+
+#### Known limitations
+- No budget delete (backend defines none). No budget history/trends, no CSV/Reports UI (FE-007).
+- Pre-existing: `frontend/tsconfig.tsbuildinfo` is tracked and changes on every typecheck.
+
+#### Local verification
+- `tsc --noEmit` → 0 errors · `eslint .` → 0 warnings/errors · `vitest run` → **389 passed** (108 new in 7 files) · `vite build` → 547 kB JS (gzip 164 kB) + 20.2 kB CSS · `git diff --check` → clean.
 
 ### FE-005 summary
 
@@ -676,8 +731,10 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-`FE-004` — Books screens (monthly/event/general list, month navigation with `POST /books/monthly/{year}/{month}/ensure/` before opening, event/general create/edit/archive, empty/error states). Only after FE-003 is reviewed and merged by the user.
+`FE-007` — Reports, search and CSV (reports UI, filters that compose correctly, CSV export respecting the active user and selected filters). Only after FE-006 is reviewed and merged by the user.
 
+**FE-006 is complete** — see FE-006 summary above.
+**FE-004 and FE-005 are complete** — see their summaries above.
 **FE-003 is complete** — see FE-003 summary above for the full checkpoint.
 **FE-002 is complete** — see FE-002 summary above for the full checkpoint.
 
