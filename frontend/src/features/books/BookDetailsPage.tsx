@@ -1,9 +1,8 @@
 /**
- * BookDetailsPage — UX-05 (`/books/:id`), Books-related fields only.
+ * BookDetailsPage — UX-05 (`/books/:id`).
  *
- * Shows book metadata and, for EVENT/GENERAL books, edit / archive / restore
- * actions.  Archived books show the "Archived book — read only" banner with a
- * Restore CTA.  Transactions, totals and budgets belong to later milestones.
+ * Shows book metadata, edit / archive / restore actions for EVENT/GENERAL books,
+ * and the book's transaction history list (with filtering, pagination, and quick add).
  *
  * Non-UUID ids are treated as not found without a request; inaccessible or
  * unknown ids (404) render a generic not-found state.
@@ -14,6 +13,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ErrorState, LoadingSkeleton } from '@/components/ui/StateViews'
 import { useToast } from '@/components/ui/Toast'
 import { primaryButton, secondaryButton } from '@/components/ui/styles'
+import TransactionList from '@/features/transactions/components/TransactionList'
 import { getApiErrorCode, getApiErrorMessage } from '@/services/api/errors'
 import type { Book } from '@/types'
 import ArchiveConfirmationDialog from './components/ArchiveConfirmationDialog'
@@ -184,6 +184,9 @@ export default function BookDetailsPage() {
       {dialog === 'archive' && (
         <ArchiveConfirmationDialog book={book} onClose={() => setDialog(null)} />
       )}
+
+      {/* Book Transactions History */}
+      <TransactionList book={book} />
     </div>
   )
 }

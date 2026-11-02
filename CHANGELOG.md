@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### FE-005 — Transactions management
+- **Routes** (`src/app/router/index.tsx`): `/transactions/new` → `TransactionCreatePage` (UX-06), `/transactions/:id/edit` and `/transactions/:id` → `TransactionEditPage` (UX-07); `/books/:id` updated to embed `TransactionList` for viewing transaction history with filtering and pagination.
+- **API services** (`src/services/api/`):
+  - `transactions.ts`: `listTransactions` (`book_id`, `type`, `category_id`, `payment_method_id`, `date_from`, `date_to`, `search`, `ordering`, `page`), `createTransaction` (`POST /api/v1/transactions/`), `getTransaction` (`GET /api/v1/transactions/{id}/`), `updateTransaction` (`PATCH /api/v1/transactions/{id}/`), `deleteTransaction` (`DELETE /api/v1/transactions/{id}/` soft-delete, 204).
+  - `categories.ts`: `listCategories` (`type`, `is_active`, `search`, `page`).
+  - `paymentMethods.ts`: `listPaymentMethods` (`is_active`, `search`, `page`).
+  - Re-exported through `src/services/api/index.ts`.
+- **Types** (`src/types/index.ts`): Added `TransactionOrdering`, `TransactionListParams`, `CreateTransactionPayload`, `UpdateTransactionPayload`, `CategoryListParams`, `PaymentMethodListParams`, and extended `Category` / `PaymentMethod`.
+- **Screens & Components** (`src/features/transactions/`):
+  - `TransactionCreatePage`: quick add transaction with Income/Expense toggle, positive decimal amount handling, user-timezone date defaulting, book preselection (`?bookId=`), type-filtered categories, payment methods, description.
+  - `TransactionEditPage`: detail viewing, editing, read-only handling for transactions in archived books, monthly date reassignment notice, and soft deletion.
+  - `TransactionForm`: reusable form component with positive decimal validation, type switching with category reset, historical inactive category/payment method preservation, and duplicate submission prevention.
+  - `TransactionList` & `TransactionRow`: transaction history with clear Income (+emerald) / Expense distinction, category and payment method badges, formatted dates and decimal-safe currency amounts.
+  - `TransactionFilters`: filter controls for search, transaction type, category, payment method, date range, and ordering.
+  - `DeleteTransactionDialog`: accessible confirmation modal explaining soft deletion from active views and reports.
+- **TanStack Query hooks**: `useTransactionsList`, `useTransaction`, `useCreateTransaction`, `useUpdateTransaction`, `useDeleteTransaction`, `useCategoriesList`, `usePaymentMethodsList`. Mutations invalidate `['transactions', 'list']`, `['books']`, and update detail cache.
+- **Tests**: 46 new tests added across 5 test files (`transactions.test.ts` 6, `categoriesAndPaymentMethods.test.ts` 4, `utils.test.ts` 13, `TransactionForm.test.tsx` 5, `TransactionCreatePage.test.tsx` 6, `TransactionEditPage.test.tsx` 8, `TransactionHistory.test.tsx` 4); total frontend suite: **281/281 passed**.
+- **CI / Quality gates:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **281/281 passed**; `vite build` → 514 kB JS (gzip: 157 kB) + 18.7 kB CSS (gzip: 4.5 kB); `git diff --check` clean.
+- **No backend changes.** No API contract changes. No new npm dependencies.
+
 ### FE-004 — Books management
 - **Routes** (`src/app/router/index.tsx`): `/books` → `BooksPage`, `/books/:id` → `BookDetailsPage` (replacing placeholders); both remain inside `PrivateRoute` + `AppShell`.
 - **API service** (`src/services/api/books.ts`): `listBooks` (`type`, `search`, `is_archived`, `ordering`, `page`; only supplied filters are sent; AbortSignal forwarded), `createBook`, `ensureMonthlyBook` (`POST /books/monthly/{year}/{month}/ensure/`; 201 → `created: true`), `getBook`, `updateBook`, `archiveBook`, `restoreBook`. No delete operation. The un-archive endpoint is `POST /books/{id}/restore/` — the contract, OpenAPI and backend define `restore`; there is no `/unarchive/` route. `src/services/api/errors.ts` adds safe ApiError message helpers (network failures get an offline message; raw server text is not shown).

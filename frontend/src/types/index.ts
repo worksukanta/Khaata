@@ -101,13 +101,18 @@ export interface Category {
   id: string
   name: string
   type: TransactionType
+  is_default?: boolean
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export interface PaymentMethod {
   id: string
   name: string
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Transaction {
@@ -121,6 +126,59 @@ export interface Transaction {
   description: string | null
   created_at: string
   updated_at: string
+}
+
+export type TransactionOrdering =
+  | 'transaction_date'
+  | '-transaction_date'
+  | 'amount'
+  | '-amount'
+  | 'created_at'
+  | '-created_at'
+
+export interface TransactionListParams {
+  book_id?: string
+  type?: TransactionType
+  category_id?: string
+  payment_method_id?: string
+  date_from?: string
+  date_to?: string
+  search?: string
+  ordering?: TransactionOrdering
+  page?: number
+}
+
+export interface CreateTransactionPayload {
+  book_id: string
+  type: TransactionType
+  amount: string
+  transaction_date: string
+  category_id?: string | null
+  payment_method_id?: string | null
+  description?: string | null
+}
+
+export interface UpdateTransactionPayload {
+  book_id?: string
+  type?: TransactionType
+  amount?: string
+  transaction_date?: string
+  category_id?: string | null
+  payment_method_id?: string | null
+  description?: string | null
+}
+
+export interface CategoryListParams {
+  type?: TransactionType
+  is_active?: boolean
+  search?: string
+  page?: number
+}
+
+export interface PaymentMethodListParams {
+  is_active?: boolean
+  search?: string
+  page?: number
 }
 
 // ---------------------------------------------------------------------------

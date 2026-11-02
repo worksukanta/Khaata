@@ -16,8 +16,9 @@
  *  /settings             → Settings — UX-11 [protected]
  *
  * FE-002: Login and Register are real pages; route guards are active.
- * FE-004: /books and /books/:id are real pages; other protected routes still
- * render placeholder pages (implemented in later milestones).
+ * FE-004: /books and /books/:id are real pages.
+ * FE-005: /transactions/new and /transactions/:id/edit are real pages.
+ * Other protected routes render placeholder pages.
  */
 
 import { createBrowserRouter } from 'react-router-dom'
@@ -27,6 +28,8 @@ import NotFoundPage from '@/components/layout/NotFoundPage'
 import PlaceholderPage from '@/components/layout/PlaceholderPage'
 import BooksPage from '@/features/books/BooksPage'
 import BookDetailsPage from '@/features/books/BookDetailsPage'
+import TransactionCreatePage from '@/features/transactions/TransactionCreatePage'
+import TransactionEditPage from '@/features/transactions/TransactionEditPage'
 import LoginPage from '@/features/auth/LoginPage'
 import RegisterPage from '@/features/auth/RegisterPage'
 import PrivateRoute from '@/features/auth/PrivateRoute'
@@ -52,8 +55,9 @@ const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: 'books', element: <BooksPage /> },
           { path: 'books/:id', element: <BookDetailsPage /> },
-          { path: 'transactions/new', element: <PlaceholderPage title="Add Transaction" /> },
-          { path: 'transactions/:id/edit', element: <PlaceholderPage title="Edit Transaction" /> },
+          { path: 'transactions/new', element: <TransactionCreatePage /> },
+          { path: 'transactions/:id', element: <TransactionEditPage /> },
+          { path: 'transactions/:id/edit', element: <TransactionEditPage /> },
           { path: 'budgets', element: <PlaceholderPage title="Budgets" /> },
           { path: 'budgets/:id', element: <PlaceholderPage title="Budget Detail" /> },
           { path: 'reports', element: <PlaceholderPage title="Reports" /> },

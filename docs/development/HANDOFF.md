@@ -1,10 +1,55 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-022-FE-004` (follows `KH-CP-021-FE-003`)
+`KH-CP-023-FE-005` (follows `KH-CP-022-FE-004`)
 
 ## State
-Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007, BE-008, BE-009, BOOT-002, FE-001, FE-002, FE-003 and FE-004 (Books management) are implemented; the user handles all Git operations — none were performed by the agent. FE-004 is in the working tree, uncommitted, awaiting user review/commit. **Next task: FE-005 — Quick transaction entry and history (not started).**
+Steps 1–4 approved. BOOT-001 and BE-001–BE-006 are committed on `main` by the user (latest `153adef`, BE-006). BE-007, BE-008, BE-009, BOOT-002, FE-001, FE-002, FE-003, FE-004, and FE-005 (Transactions management) are implemented; the user handles all Git operations — none were performed by the agent. FE-004 and FE-005 are in the working tree, uncommitted, awaiting user review/commit. **Next task: FE-006 — Dashboard and budget planner (not started).**
+
+### FE-005 summary
+
+#### What was built
+- Transactions management frontend on top of the existing Transactions, Categories, and Payment Methods REST APIs. **No backend files, API contract or OpenAPI changes. No new npm dependencies.**
+- Routes `/transactions/new` (UX-06) and `/transactions/:id/edit` (UX-07, with `/transactions/:id` alias) wired to real screens; `/books/:id` (UX-05) updated to embed the book's transaction history list with filtering and pagination.
+
+#### File layout
+```
+frontend/src/
+├── services/api/
+│   ├── transactions.ts, categories.ts, paymentMethods.ts
+│   └── transactions.test.ts, categoriesAndPaymentMethods.test.ts
+├── types/index.ts (TransactionOrdering, param and payload types added)
+├── app/router/index.tsx (/transactions/new, /transactions/:id/edit wired)
+└── features/
+    ├── books/BookDetailsPage.tsx (embeds TransactionList)
+    └── transactions/
+        ├── TransactionCreatePage.tsx (UX-06 quick entry)
+        ├── TransactionEditPage.tsx (UX-07 detail / edit / soft-delete)
+        ├── components/
+        │   ├── TransactionForm.tsx (reusable create/edit form)
+        │   ├── TransactionRow.tsx (history row with Income/Expense styling)
+        │   ├── TransactionFilters.tsx (type, category, method, date, search, ordering)
+        │   ├── TransactionList.tsx (history list with pagination and empty states)
+        │   └── DeleteTransactionDialog.tsx (soft delete confirmation modal)
+        ├── hooks/
+        │   ├── useTransactions.ts (list, detail, create, update, delete mutations)
+        │   ├── useCategories.ts (active/type-filtered categories list)
+        │   └── usePaymentMethods.ts (active payment methods list)
+        ├── utils.ts, types.ts (decimal validation, error mapping, amount formatting)
+        └── testUtils.tsx + *.test.ts(x) (fake backend and 5 test suites)
+```
+
+#### Financial & Domain Rules
+- **Decimal-safe amounts:** positive decimal validation (> 0, ≤ 2 decimal places, ≤ 12 integer digits); formatted via pure string manipulation without JavaScript floating-point conversions.
+- **Type-matched categories:** category selector displays only active categories matching current transaction type (INCOME or EXPENSE); switching type resets incompatible category selection.
+- **Historical inactive references:** preserved intact on edit forms with `(Inactive)` label; new selections offer only active categories and payment methods.
+- **Archived books:** reject transaction creation, editing, and deletion; historical transactions in archived books remain viewable in read-only mode with an "Archived book — read only" warning banner.
+- **Monthly date reassignment:** when a date crossing calendar months is submitted on a transaction in a MONTHLY book, the update is sent via standard PATCH; backend performs atomic reassignment to the target monthly book. An informative notice explains this to the user without client-side duplication.
+- **Soft deletion:** DELETE `/api/v1/transactions/{id}/` invoked after modal confirmation; clearly explains removal from active views and reports.
+- **Cache invalidation:** mutations invalidate `['transactions', 'list']` and `['books']`, and update or remove individual detail cache entries.
+
+#### Local verification
+- `tsc --noEmit` → 0 errors · `eslint .` → 0 warnings/errors · `vitest run` → **281 passed** (46 new tests across 5 files) · `vite build` → 514 kB JS (gzip 157 kB) + 18.7 kB CSS · `git diff --check` → clean.
 
 ### FE-004 summary
 

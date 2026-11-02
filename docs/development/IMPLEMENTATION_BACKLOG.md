@@ -147,9 +147,12 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **235/235 passed** (101 pre-existing + 134 new); `vite build` → succeeds; `git diff --check` → clean.
 
 ### FE-005 — Quick transaction entry and history
-- Status: TODO (not started)
-- Add/edit form, filters, pagination, transaction details.
-- Acceptance: mobile form usable at 320px width; failed save preserves values.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting user review and merge)
+- Implemented `/transactions/new` (`TransactionCreatePage`, UX-06) and `/transactions/:id/edit` (`TransactionEditPage`, UX-07). Updated `/books/:id` (`BookDetailsPage`, UX-05) to embed `TransactionList` with filtering and pagination.
+- API service: `src/services/api/transactions.ts` (`GET/POST /transactions/`, `GET/PATCH/DELETE /transactions/{id}/`), `src/services/api/categories.ts` (`GET /categories/`), `src/services/api/paymentMethods.ts` (`GET /payment-methods/`).
+- Financial rules: decimal-safe monetary inputs and formatting without floating point; positive amount validation; category type matching; historical inactive references preserved on edit; archived books read-only; monthly date changes submitted via PATCH letting backend handle atomic book reassignment; soft deletion via DELETE endpoint with confirmation modal.
+- TanStack Query hooks: `useTransactionsList`, `useTransaction`, `useCreateTransaction`, `useUpdateTransaction`, `useDeleteTransaction`, `useCategoriesList`, `usePaymentMethodsList`.
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **281/281 passed** (46 new tests); `vite build` → succeeds; `git diff --check` → clean.
 
 ### FE-006 — Dashboard and budget planner
 - Status: TODO
