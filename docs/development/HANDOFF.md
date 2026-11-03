@@ -1,10 +1,58 @@
 # Khaata Agent Handoff Checkpoint
 
 ## Current checkpoint ID
-`KH-CP-024-FE-006` (follows `KH-CP-023-FE-005`)
+`KH-CP-025-FE-007` (follows `KH-CP-024-FE-006`)
 
 ## State
-Steps 1–4 approved. BOOT-001–BOOT-002, BE-001–BE-009, and FE-001–FE-005 are committed on `main` by the user (latest `f1d4210`, FE-005). FE-006 is implemented in the working tree, uncommitted, awaiting final user approval and commit. **Next task: FE-007 — Reports, search and CSV (not started).**
+Steps 1–4 approved. BOOT-001–BOOT-002, BE-001–BE-009, and FE-001–FE-006 are committed on `main` by the user (FE-006 in `72c4f3c`). FE-007 is implemented in the working tree, uncommitted, awaiting final user approval and commit. **Next task: QA-001 — Security and financial invariants audit (not started).**
+
+### FE-007 summary
+
+#### What was built
+- `/reports` (UX-10, `ReportsPage`): scope controls, totals/breakdowns, 6-month history, filtered transaction list and CSV export. **No backend, API contract or OpenAPI changes. No new npm dependencies.**
+- URL is the state (`?year&month&period&bookId&type&categoryId&paymentMethodId&dateFrom&dateTo&search&ordering&page`), so views and exports are shareable and survive reload. Dashboard has a "View report" link to `/reports?year=&month=`.
+
+#### API used (verified against `openapi.yaml`, `API_CONTRACT.md` and backend code)
+- `GET /reports/monthly/?year&month` — month totals, book-type and category breakdowns (reused dashboard components); also 6 parallel calls for history (shares the dashboard cache keys).
+- `GET /reports/books/{id}/` — no query params; all dates of the book: `income_total, expense_total, net_cash_flow, closing_balance, category_breakdown, budget`.
+- `GET /reports/budget-utilization/?year&month` — via the shared `DashboardBudgetCard`.
+- `GET /transactions/` — FE-005 filters (`book_id,type,category_id,payment_method_id,date_from,date_to,search,ordering,page`), reused.
+- `GET /exports/transactions.csv?book_id&type&category_id&payment_method_id&date_from&date_to&search` — no `ordering`/`page`. `Accept: application/json` kept; response is a string (CSV) and downloaded as a Blob; malformed filters return the standard 400 error envelope.
+
+#### Contract finding (not a blocker)
+No report endpoint accepts a date range, category, type or payment-method filter. Totals therefore exist only for a month (all books) or one book (all dates). For "Custom range" and "All dates" without a book the page shows a note and narrows only the list and the CSV; totals are never computed in the browser. A selected book switches scope to "All dates" and hides "Selected month".
+
+#### File layout (`frontend/src/`)
+```
+services/api/{exports,transactionQuery}.ts, exports.test.ts   (new)
+services/api/{reports,transactions,index}.ts, reports.test.ts (getBookReport; shared query builder)
+types/index.ts                            (BookReport, BookReportBook, TransactionExportParams)
+features/dashboard/components/KpiRow.tsx  (extracted from HomePage, shared)
+features/dashboard/hooks/useReports.ts    (useBookReport, enabled option)
+features/dashboard/components/CategoryBreakdown.tsx (emptyText)
+features/transactions/hooks/useTransactions.ts (enabled option)
+features/transactions/components/{TransactionFilters (showDates),TransactionRow (bookName)}.tsx
+features/reports/
+  ReportsPage.tsx, ReportsPage.test.tsx, testUtils.tsx
+  types.ts, utils.ts (+test), download.ts (+test)
+  hooks/{useCsvExport,useMonthlyHistory}.ts
+  components/{MonthlyHistory,BookReportSummary,ReportScopeControls,CsvExportAction}.tsx
+app/router/index.tsx                      (/reports wired)
+```
+
+#### Rules
+- Server totals rendered verbatim (no float math, no client aggregation). CSV generated only by the backend; filename from `Content-Disposition` when readable (CORS does not expose it), else `transactions.csv`.
+- List and export are built from the same state through `toListParams`/`toExportParams` and `buildTransactionFilterQuery`. Search is debounced (300 ms) and the export uses the debounced value. Inverted date range disables list and export with an inline message.
+- Inaccessible/malformed book → generic "Book not found" (no existence leak); the list is not requested until the book report resolves. Archived books are labelled read only but still reported.
+- Export: button disabled with progress while running (no duplicate requests), error alert with Retry preserving filters, success toast, error cleared on scope change.
+
+#### Known limitations
+- Responsive layout was **not** verified in a real browser; only Tailwind mobile-first classes and jsdom tests exist.
+- No category/type totals for custom ranges (API limitation). History is fixed at 6 months. Book selector loads all books (including archived) via `useAllBooks`.
+- Pre-existing: `frontend/tsconfig.tsbuildinfo` is tracked and changes on every typecheck.
+
+#### Local verification
+- `tsc --noEmit` → 0 errors · `eslint .` → 0 warnings/errors · `vitest run` → **469 passed** (80 new; 31 files) · `npm run build` → 572 kB JS (gzip 171 kB) + 20.5 kB CSS · `git diff --check` → clean.
 
 ### FE-006 summary
 
@@ -731,8 +779,9 @@ All 150 tests pass with zero deprecation warnings under `-W error::DeprecationWa
 9. `docs/ui-ux/DESIGN_SYSTEM.md`
 
 ## Next task
-`FE-007` — Reports, search and CSV (reports UI, filters that compose correctly, CSV export respecting the active user and selected filters). Only after FE-006 is reviewed and merged by the user.
+`QA-001` — Security and financial invariants audit (permissions, concurrency, decimal math, deletion, date boundaries, CSV safety). Only after FE-007 is reviewed and committed by the user.
 
+**FE-007 is complete** — see FE-007 summary above.
 **FE-006 is complete** — see FE-006 summary above.
 **FE-004 and FE-005 are complete** — see their summaries above.
 **FE-003 is complete** — see FE-003 summary above for the full checkpoint.

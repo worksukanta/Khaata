@@ -297,3 +297,32 @@ export interface BudgetUtilizationReport {
   period: ReportPeriod
   budget: Budget | null
 }
+
+/** Book summary embedded in GET /reports/books/{id}/ (openapi.yaml BookReport). */
+export interface BookReportBook {
+  id: string
+  type: BookType
+  name: string
+  is_archived: boolean
+}
+
+/** Book-scoped totals over all active transactions of one owned book (any date). */
+export interface BookReport {
+  book: BookReportBook
+  income_total: string
+  expense_total: string
+  /** Signed decimal string; negative when expenses exceed income. */
+  net_cash_flow: string
+  /** opening_balance + income_total - expense_total; signed decimal string. */
+  closing_balance: string
+  category_breakdown: CategoryBreakdownItem[]
+  /** Event budget for EVENT books; always null for MONTHLY/GENERAL or when absent. */
+  budget: Budget | null
+}
+
+/**
+ * Query parameters of GET /exports/transactions.csv — the transaction list
+ * filters without `ordering` and `page` (the export is unpaginated and has a
+ * fixed ordering).
+ */
+export type TransactionExportParams = Omit<TransactionListParams, 'ordering' | 'page'>

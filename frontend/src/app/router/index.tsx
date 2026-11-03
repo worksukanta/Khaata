@@ -19,6 +19,7 @@
  * FE-004: /books and /books/:id are real pages.
  * FE-005: /transactions/new and /transactions/:id/edit are real pages.
  * FE-006: / (dashboard), /budgets and /budgets/:id are real pages.
+ * FE-007: /reports is a real page.
  * Other protected routes render placeholder pages.
  */
 
@@ -33,6 +34,7 @@ import TransactionCreatePage from '@/features/transactions/TransactionCreatePage
 import TransactionEditPage from '@/features/transactions/TransactionEditPage'
 import BudgetsPage from '@/features/budgets/BudgetsPage'
 import BudgetDetailsPage from '@/features/budgets/BudgetDetailsPage'
+import ReportsPage from '@/features/reports/ReportsPage'
 import LoginPage from '@/features/auth/LoginPage'
 import RegisterPage from '@/features/auth/RegisterPage'
 import PrivateRoute from '@/features/auth/PrivateRoute'
@@ -63,7 +65,7 @@ const router = createBrowserRouter([
           { path: 'transactions/:id/edit', element: <TransactionEditPage /> },
           { path: 'budgets', element: <BudgetsPage /> },
           { path: 'budgets/:id', element: <BudgetDetailsPage /> },
-          { path: 'reports', element: <PlaceholderPage title="Reports" /> },
+          { path: 'reports', element: <ReportsPage /> },
           { path: 'settings', element: <PlaceholderPage title="Settings" /> },
         ],
       },

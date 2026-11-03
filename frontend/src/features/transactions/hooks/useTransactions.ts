@@ -33,11 +33,15 @@ export const transactionKeys = {
   detail: (id: string) => ['transactions', 'detail', id] as const,
 }
 
-export function useTransactionsList(params: TransactionListParams = {}) {
+export function useTransactionsList(
+  params: TransactionListParams = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: transactionKeys.list(params),
     queryFn: ({ signal }) => listTransactions(params, signal),
     placeholderData: keepPreviousData,
+    enabled: options.enabled ?? true,
   })
 }
 

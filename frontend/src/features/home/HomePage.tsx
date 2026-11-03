@@ -17,13 +17,12 @@ import { useAuth } from '@/features/auth/AuthContext'
 import MonthNavigator from '@/features/books/components/MonthNavigator'
 import { useAllBooks } from '@/features/books/hooks/useBooks'
 import type { YearMonth } from '@/features/books/types'
-import { formatMoney, getCurrentYearMonth, monthLabel, parseYearMonth } from '@/features/books/utils'
-import { isNegativeMoney } from '@/features/budgets/utils'
+import { getCurrentYearMonth, monthLabel, parseYearMonth } from '@/features/books/utils'
 import { getApiErrorMessage } from '@/services/api/errors'
 import BookTypeBreakdown from '@/features/dashboard/components/BookTypeBreakdown'
 import CategoryBreakdown from '@/features/dashboard/components/CategoryBreakdown'
 import DashboardBudgetCard from '@/features/dashboard/components/DashboardBudgetCard'
-import KpiCard from '@/features/dashboard/components/KpiCard'
+import KpiRow from '@/features/dashboard/components/KpiRow'
 import RecentTransactions from '@/features/dashboard/components/RecentTransactions'
 import { useMonthlyReport } from '@/features/dashboard/hooks/useReports'
 
@@ -76,9 +75,17 @@ export default function HomePage() {
               Combined monthly overview across all your books, by transaction date.
             </p>
           </div>
-          <Link to="/transactions/new" className={primaryButton}>
-            Add transaction
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/reports?year=${selected.year}&month=${selected.month}`}
+              className={secondaryButton}
+            >
+              View report
+            </Link>
+            <Link to="/transactions/new" className={primaryButton}>
+              Add transaction
+            </Link>
+          </div>
         </div>
         <MonthNavigator value={selected} current={current} onChange={selectMonth} />
       </div>
@@ -103,31 +110,11 @@ export default function HomePage() {
           data-testid="dashboard-content"
         >
           <section aria-label={`${monthLabel(selected)} totals`}>
-            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3">
-              <KpiCard
-                label="Income"
-                value={formatMoney(data.income_total)}
-                testId="kpi-income"
-              />
-              <KpiCard
-                label="Expenses"
-                value={formatMoney(data.expense_total)}
-                testId="kpi-expenses"
-              />
-              <div className="min-[420px]:col-span-2 lg:col-span-1">
-                <KpiCard
-                  label="Net cash flow"
-                  value={formatMoney(data.net_cash_flow)}
-                  tone={isNegativeMoney(data.net_cash_flow) ? 'negative' : 'default'}
-                  note={
-                    isNegativeMoney(data.net_cash_flow)
-                      ? 'Negative — expenses exceeded income'
-                      : 'Income minus expenses'
-                  }
-                  testId="kpi-net"
-                />
-              </div>
-            </div>
+            <KpiRow
+              income={data.income_total}
+              expenses={data.expense_total}
+              net={data.net_cash_flow}
+            />
           </section>
 
           {isEmptyMonth && (

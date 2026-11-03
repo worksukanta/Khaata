@@ -10,6 +10,7 @@
  */
 
 import apiClient from './client'
+import { buildTransactionFilterQuery } from './transactionQuery'
 import type {
   CreateTransactionPayload,
   PaginatedResponse,
@@ -29,20 +30,8 @@ export async function listTransactions(
   params: TransactionListParams = {},
   signal?: AbortSignal,
 ): Promise<PaginatedResponse<Transaction>> {
-  const query: Record<string, string | number> = {}
-  if (params.book_id) query.book_id = params.book_id
-  if (params.type) query.type = params.type
-  if (params.category_id) query.category_id = params.category_id
-  if (params.payment_method_id) query.payment_method_id = params.payment_method_id
-  if (params.date_from) query.date_from = params.date_from
-  if (params.date_to) query.date_to = params.date_to
-  const search = params.search?.trim()
-  if (search) query.search = search
-  if (params.ordering) query.ordering = params.ordering
-  if (params.page !== undefined) query.page = params.page
-
   const response = await apiClient.get<PaginatedResponse<Transaction>>(`${TRANSACTIONS}/`, {
-    params: query,
+    params: buildTransactionFilterQuery(params),
     signal,
   })
   return response.data

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### FE-007 — Reports, search and CSV export
+- **Route** (`src/app/router/index.tsx`): `/reports` → `ReportsPage` (UX-10). Scope, month, book and filters are kept in the URL.
+- **API services** (`src/services/api/`): `reports.ts` gains `getBookReport` (`GET /api/v1/reports/books/{id}/`); new `exports.ts` (`GET /api/v1/exports/transactions.csv`, returns the backend CSV as a Blob plus filename from `Content-Disposition`, default `transactions.csv`); new `transactionQuery.ts` (`buildTransactionFilterQuery`) shared by the transaction list and the export so both use identical filters.
+- **Reports page** (`src/features/reports`): month report (KPIs, book-type and category breakdowns, monthly budget), single-book report (totals, closing balance, categories, budget), 6-month history, scope controls (selected month / custom range / all dates / book), reused FE-005 filters and pagination, filtered transaction list, CSV export with progress, duplicate-click prevention, error alert with Retry and success toast.
+- **Shared changes**: `KpiRow` extracted from the dashboard; dashboard "View report" link; `useBookReport`; `enabled` option on `useMonthlyReport` / `useTransactionsList`; `TransactionFilters` `showDates`; `TransactionRow` `bookName`; `CategoryBreakdown` `emptyText`.
+- **Contract note**: report endpoints accept only year/month (monthly, budget-utilization) or nothing (book); there is no date-range/category totals endpoint, so custom ranges narrow the list and CSV only. No totals are computed in the browser.
+- **Tests**: 80 new tests (exports service, book report service, report utils, download helper, ReportsPage). Total frontend suite: **469/469 passed**.
+- **CI / Quality gates:** `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **469/469 passed**; `vite build` → 572 kB JS (gzip: 171 kB) + 20.5 kB CSS; `git diff --check` clean.
+- **No backend changes.** No API contract changes. No new npm dependencies.
+
+
 ### FE-006 — Dashboard and budget planner
 - **Routes** (`src/app/router/index.tsx`): `/` → live `HomePage` dashboard (UX-03), `/budgets` → `BudgetsPage` (UX-08), `/budgets/:id` → `BudgetDetailsPage` (UX-09), all inside `PrivateRoute` + `AppShell`. Selected month is kept in the URL (`?year=&month=`).
 - **API services** (`src/services/api/`): `reports.ts` (`GET /api/v1/reports/monthly/`, `GET /api/v1/reports/budget-utilization/`), `budgets.ts` (`GET/POST /api/v1/budgets/`, `GET/PATCH /api/v1/budgets/{id}/`, `PUT /api/v1/budgets/{id}/allocations/`); re-exported via `index.ts`. No budget DELETE exists in the backend.

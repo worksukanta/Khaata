@@ -14,6 +14,8 @@ interface TransactionFiltersProps {
   onChange: (filters: TransactionFilterState) => void
   onClear: () => void
   hasActiveFilters: boolean
+  /** Hide the From/To date inputs when the date range is fixed by the caller (Reports month scope). */
+  showDates?: boolean
 }
 
 export default function TransactionFilters({
@@ -21,6 +23,7 @@ export default function TransactionFilters({
   onChange,
   onClear,
   hasActiveFilters,
+  showDates = true,
 }: TransactionFiltersProps) {
   const categoriesQuery = useCategoriesList()
   const paymentMethodsQuery = usePaymentMethodsList()
@@ -137,6 +140,7 @@ export default function TransactionFilters({
         </div>
 
         {/* Date From */}
+        {showDates && (
         <div>
           <label
             htmlFor="filter-date-from"
@@ -158,8 +162,10 @@ export default function TransactionFilters({
             className={inputClass}
           />
         </div>
+        )}
 
         {/* Date To */}
+        {showDates && (
         <div>
           <label
             htmlFor="filter-date-to"
@@ -181,6 +187,7 @@ export default function TransactionFilters({
             className={inputClass}
           />
         </div>
+        )}
 
         {/* Ordering */}
         <div>

@@ -10,7 +10,7 @@ vi.mock('@/services/api/client', () => ({
 }))
 
 import apiClient from '@/services/api/client'
-import { getBudgetUtilization, getMonthlyReport } from '@/services/api/reports'
+import { getBookReport, getBudgetUtilization, getMonthlyReport } from '@/services/api/reports'
 
 const client = vi.mocked(apiClient)
 
@@ -71,5 +71,37 @@ describe('getBudgetUtilization', () => {
     client.get.mockRejectedValue(error)
 
     await expect(getBudgetUtilization(2026, 3)).rejects.toBe(error)
+  })
+})
+
+describe('getBookReport', () => {
+  const ID = '00000000-0000-4000-8000-000000000001'
+
+  it('GETs /api/v1/reports/books/{id}/ with no query params', async () => {
+    const report = { book: { id: ID }, closing_balance: '-5.00' }
+    client.get.mockResolvedValue({ data: report })
+
+    const result = await getBookReport(ID)
+
+    expect(client.get).toHaveBeenCalledWith(`/api/v1/reports/books/${ID}/`, { signal: undefined })
+    expect(result).toBe(report)
+  })
+
+  it('encodes the id and forwards the abort signal', async () => {
+    client.get.mockResolvedValue({ data: {} })
+    const controller = new AbortController()
+
+    await getBookReport('a/b', controller.signal)
+
+    expect(client.get).toHaveBeenCalledWith('/api/v1/reports/books/a%2Fb/', {
+      signal: controller.signal,
+    })
+  })
+
+  it('propagates a 404 error envelope', async () => {
+    const error = { error: { code: 'not_found', message: 'No such book' } }
+    client.get.mockRejectedValue(error)
+
+    await expect(getBookReport(ID)).rejects.toBe(error)
   })
 })

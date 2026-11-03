@@ -16,9 +16,15 @@ interface CategoryBreakdownProps {
   rows: CategoryBreakdownItem[]
   /** Combined expense total; used only to scale the bars. */
   expenseTotal: string
+  /** Shown when there are no expenses (defaults to the monthly wording). */
+  emptyText?: string
 }
 
-export default function CategoryBreakdown({ rows, expenseTotal }: CategoryBreakdownProps) {
+export default function CategoryBreakdown({
+  rows,
+  expenseTotal,
+  emptyText = 'No expenses recorded for this month.',
+}: CategoryBreakdownProps) {
   return (
     <section
       aria-labelledby="category-heading"
@@ -28,7 +34,7 @@ export default function CategoryBreakdown({ rows, expenseTotal }: CategoryBreakd
         Spending by category
       </h2>
       {rows.length === 0 ? (
-        <p className="mt-2 text-sm text-text-secondary">No expenses recorded for this month.</p>
+        <p className="mt-2 text-sm text-text-secondary">{emptyText}</p>
       ) : (
         <ul className="mt-3 space-y-3">
           {rows.map((row) => (

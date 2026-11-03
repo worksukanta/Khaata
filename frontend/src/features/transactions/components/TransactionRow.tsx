@@ -11,9 +11,15 @@ import type { Transaction } from '@/types'
 interface TransactionRowProps {
   transaction: Transaction
   readOnly?: boolean
+  /** Source book label for cross-book lists (Reports); links to the book. */
+  bookName?: string
 }
 
-export default function TransactionRow({ transaction, readOnly = false }: TransactionRowProps) {
+export default function TransactionRow({
+  transaction,
+  readOnly = false,
+  bookName,
+}: TransactionRowProps) {
   const { isIncome, text } = formatTransactionAmount(
     transaction.amount,
     transaction.type,
@@ -47,6 +53,14 @@ export default function TransactionRow({ transaction, readOnly = false }: Transa
             <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-text-secondary">
               {transaction.payment_method.name}
             </span>
+          )}
+          {bookName && (
+            <Link
+              to={`/books/${transaction.book_id}`}
+              className="text-xs text-brand-700 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-700"
+            >
+              {bookName}
+            </Link>
           )}
         </div>
 

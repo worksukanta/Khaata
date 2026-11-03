@@ -155,7 +155,7 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **281/281 passed** (46 new tests); `vite build` → succeeds; `git diff --check` → clean.
 
 ### FE-006 — Dashboard and budget planner
-- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting final user approval and commit)
+- Status: DONE (committed in `72c4f3c`)
 - Implemented `/` (`HomePage`, UX-03 combined monthly dashboard), `/budgets` (`BudgetsPage`, UX-08) and `/budgets/:id` (`BudgetDetailsPage`, UX-09). The selected month is held in the URL (`?year=&month=`) on `/` and `/budgets`, defaulting to the current month in the user's timezone.
 - API services: `src/services/api/reports.ts` (`GET /reports/monthly/`, `GET /reports/budget-utilization/`), `src/services/api/budgets.ts` (`GET/POST /budgets/`, `GET/PATCH /budgets/{id}/`, `PUT /budgets/{id}/allocations/`). The backend defines no budget DELETE, so none is offered.
 - Server values are the source of truth: totals, `spent`, `remaining`, `utilization_percent` and `status` are rendered as returned. BigInt integer cents are used only for form validation, the live allocation preview and bar widths. Overspending is never blocked; `OVER_BUDGET` shows "₹X over budget", `UNBUDGETED_SPENDING` shows no percentage, `NOT_SET` shows a "Set a budget" call to action.
@@ -165,9 +165,14 @@ Statuses: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status only after che
 - Acceptance (original): display matches API totals; warnings are understandable.
 
 ### FE-007 — Reports, search and CSV
-- Status: TODO
-- Reports and filtered export.
-- Acceptance: filters compose correctly; export respects active user and selected filters.
+- Status: IN_PROGRESS (implementation complete in the working tree; uncommitted — the user handles all Git operations; awaiting final user approval and commit)
+- Implemented `/reports` (`ReportsPage`, UX-10). Scope, month, book and filters live in the URL so a report/export is shareable and survives reload. Scopes: **Selected month** (all books), **Custom range** and **All dates** (list and export only), or a **single book** (all dates of the book).
+- API: `GET /reports/monthly/?year&month`, `GET /reports/books/{id}/` (no query params), `GET /reports/budget-utilization/?year&month` (via the shared dashboard budget card), `GET /transactions/` (existing FE-005 filters + pagination, reused), `GET /exports/transactions.csv?book_id&type&category_id&payment_method_id&date_from&date_to&search`.
+- Contract finding: no report endpoint accepts a date range, category, type or payment-method filter, so totals exist only for a month (all books) or one book. For other scopes the page says so and shows the filtered list/export only; totals are never computed in the browser.
+- CSV is produced by the backend only; the frontend downloads the returned blob (filename from `Content-Disposition` when readable, otherwise `transactions.csv`). The export uses exactly the filters of the list (minus `ordering`/`page`) through the shared `buildTransactionFilterQuery`. Loading state, duplicate-click prevention, error alert with Retry and success toast are provided.
+- History: last 6 months from `GET /reports/monthly/` (shares the dashboard cache). Dashboard gained a "View report" link and the shared `KpiRow`.
+- Acceptance: `tsc --noEmit` → 0 errors; `eslint .` → 0 warnings/errors; `vitest run` → **469/469 passed** (80 new); `vite build` → succeeds; `git diff --check` → clean. Filters compose through one shared query builder; export respects the authenticated user (server-side) and the selected filters.
+- Not verified in a real browser (see HANDOFF for the responsive verification actually performed).
 
 ## Milestone M3 — Quality and deployment
 
